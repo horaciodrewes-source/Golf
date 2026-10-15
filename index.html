@@ -61,30 +61,36 @@ input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5p
 .partners{display:flex;flex-direction:column;gap:8px}
 .partner{display:flex;gap:8px}
 /* play */
-.strip{display:flex;gap:6px;overflow-x:auto;padding-block:10px 4px;scrollbar-width:none}
+.strip{display:flex;gap:6px;overflow-x:auto;padding-block:8px 0;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
-.strip button{flex:0 0 auto;width:42px;height:50px;border-radius:9px;background:var(--surface);border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.strip button{flex:0 0 auto;width:40px;height:44px;border-radius:9px;background:var(--surface);border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .strip button b{font:700 17px/1 var(--display)}
 .strip button span{font-size:11px;color:var(--muted)}
 .strip button[aria-current="true"]{border-color:var(--green);background:var(--green-soft)}
 .strip button.has span{color:var(--ink);font-weight:700}
-.hole{background:var(--green);color:var(--green-ink);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
-.hole .nav{font-size:30px;min-width:44px;min-height:54px;color:inherit;border-radius:10px}
+.hole{background:var(--green);color:var(--green-ink);border-radius:14px;padding:6px;display:flex;align-items:center;gap:6px;min-height:52px}
+.hole .nav{font-size:28px;min-width:40px;min-height:40px;color:inherit;border-radius:10px;flex:0 0 auto}
 .hole .nav:disabled{opacity:.3}
-.hole .mid{text-align:center}
-.hole .num{font:700 44px/1 var(--display)}
-.hole .num small{font-size:20px;opacity:.75;margin-right:4px}
-.pars{display:flex;justify-content:center;gap:6px;margin-top:6px}
-.pars button{min-width:48px;min-height:32px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:14px;color:inherit;opacity:.75}
+.hole .num{font:700 34px/1 var(--display);white-space:nowrap;font-variant-numeric:tabular-nums}
+.hole .num small{font-size:15px;opacity:.75;margin-right:3px}
+.pars{display:flex;gap:4px;flex:1;justify-content:flex-end;min-width:0}
+.pars button{flex:1;max-width:58px;min-height:34px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:13px;color:inherit;opacity:.75;white-space:nowrap;padding:0 2px}
 .pars button[aria-pressed="true"]{background:var(--flag);border-color:var(--flag);color:#2a2100;opacity:1}
-.tally{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.tally div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
-.tally b{display:block;font:700 30px/1 var(--display);font-variant-numeric:tabular-nums}
-.tally span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.playgrid{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;align-items:start}
-.used{position:sticky;top:calc(env(safe-area-inset-top,0px) + 66px);display:flex;flex-direction:column;gap:8px;min-width:0}
-.clubs{display:flex;flex-direction:column;gap:4px}
-.clubs button{min-height:37px;border-radius:9px;background:var(--surface);border:1.5px solid var(--line);font:700 18px/1 var(--display);text-transform:uppercase;padding:2px 6px}
+.tally{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tally div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 8px;display:flex;align-items:baseline;justify-content:center;gap:6px}
+.tally b{font:700 28px/1 var(--display);font-variant-numeric:tabular-nums}
+.tally span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+section.playsec{gap:8px;padding-top:8px}
+body.playing .wrap{padding-block:0 12px}
+.playgrid{--key:44px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.used{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;min-width:0;max-height:calc(8 * var(--key) + 7 * 5px);overflow-y:auto}
+.used li{flex:0 0 var(--key);height:var(--key);display:flex;align-items:center;gap:4px;padding:0 0 0 8px;border-radius:9px;background:var(--green-soft);border:1.5px solid var(--green);font:700 17px/1 var(--display);text-transform:uppercase;min-width:0}
+.used li b{color:var(--muted);font-size:14px}
+.used li span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.used li button{color:var(--muted);font:600 20px/1 var(--body);width:30px;height:100%;flex:0 0 auto}
+.used li.none{background:transparent;border-style:dashed;border-color:var(--line);color:var(--muted);font:600 13px/1.2 var(--body);text-transform:none;padding:0 8px}
+.clubs{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.clubs button{height:var(--key);border-radius:9px;background:var(--surface);border:1.5px solid var(--line);font:700 18px/1 var(--display);text-transform:uppercase;padding:2px 4px}
 .clubs button:active{background:var(--green-soft);transform:scale(.97)}
 .clubs .putter{background:var(--green-soft);border-color:var(--green);color:var(--green)}
 .clubs .other{background:var(--sand);color:var(--muted)}
@@ -146,7 +152,7 @@ body{margin:0}
 
 <script>
 const CLUBS=["Drive","Madera 3","Híbrido 4","Madera 5","Hierro 5","Hierro 6","Hierro 7","Hierro 8","Hierro 9","P","A","54","60"];
-const PUTTER="Putter", OTRO="Otro";
+const PUTTER="Putter", OTRO="Otro", PENAL="Penal";
 const DEFAULT_COURSES=["Golfer's","Palermo","Pilara"];
 const norm=s=>String(s||"").trim().toLowerCase();
 function byNewest(){return Object.values(rounds).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
@@ -188,7 +194,8 @@ function diffTxt(d,pl){if(!pl)return"–";return d===0?"E":(d>0?"+"+d:String(d))
 
 /* ---------- guardado ---------- */
 let sTimer=null, dirty=new Set(), flushing=false;
-function setSync(t){$("#sync").textContent=t}
+let syncTxt="Guardado en este teléfono";
+function setSync(t){syncTxt=t;if(view.name!=="play")$("#sync").textContent=t}
 function save(r){
   r.updatedAt=Date.now(); rounds[r.id]=r; lsSet(LS,rounds);
   dirty.add(r.id); clearTimeout(sTimer); sTimer=setTimeout(flush,700);
@@ -238,6 +245,8 @@ $("#back").onclick=()=>{
 
 function render(){
   $("#back").hidden=view.name==="list";
+  if(view.name!=="play")$("#sync").textContent=syncTxt;
+  document.body.classList.toggle("playing",view.name==="play");
   ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard})[view.name]();
 }
 
@@ -363,13 +372,14 @@ function renderPlay(){
   const i=Math.min(view.hole||0,r.holes.length-1), h=r.holes[i], t=totals(r);
   $("#title").textContent=r.course||"Ronda";
   const parTxt=h.shots.length?diffTxt(strokes(h)-h.par,1):"–";
+  $("#sync").textContent=t.pl?`Ronda ${t.s} · ${diffTxt(t.diff,t.pl)}`:"";
   app.innerHTML=`
   <nav class="strip" id="strip" aria-label="Hoyos">${r.holes.map((x,k)=>`<button data-k="${k}" ${k===i?'aria-current="true"':""} class="${x.shots.length?"has":""}"><b>${x.n}</b><span>${x.shots.length||"·"}</span></button>`).join("")}</nav>
-  <section>
+  <section class="playsec">
     <div class="hole">
       <button class="nav" id="prev" aria-label="Hoyo anterior" ${i===0?"disabled":""}>‹</button>
-      <div class="mid"><div class="num"><small>HOYO</small>${h.n}</div>
-        <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}">Par ${p}</button>`).join("")}</div></div>
+      <span class="num"><small>HOYO</small>${h.n}</span>
+      <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}">Par ${p}</button>`).join("")}</div>
       <button class="nav" id="next" aria-label="Hoyo siguiente" ${i===r.holes.length-1?"disabled":""}>›</button>
     </div>
     <div class="tally">
@@ -378,14 +388,12 @@ function renderPlay(){
       <div><b>${parTxt}</b><span>Vs. par</span></div>
     </div>
     <div class="playgrid">
-      <div class="used"><span class="label">Golpes del hoyo</span>
-        ${h.shots.length?`<ol class="shots">${h.shots.map((c,k)=>`<li><span>${esc(c)}</span><button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")}</ol>`:`<p class="hint">Tocá a la derecha el palo de cada golpe.</p>`}
-      </div>
+      <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`<li><b>${k+1}</b><span>${esc(c)}</span><button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>
       <div class="clubs" aria-label="Palos">${CLUBS.map(c=>`<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}
         <button class="putter" data-c="${PUTTER}">Putter</button>
-        <button class="other" data-c="${OTRO}">Otro</button></div>
+        <button class="other" data-c="${OTRO}">Otro</button>
+        <button class="other" data-c="${PENAL}">Penal</button></div>
     </div>
-    <div class="info"><span>Ronda: <b>${t.pl?t.s:0}</b> golpes</span><span><b>${t.p}</b> putts</span><span><b>${diffTxt(t.diff,t.pl)}</b> vs. par</span><span><b>${t.pl}</b>/${r.holes.length} hoyos</span></div>
     <div class="bar">
       ${i<r.holes.length-1?`<button class="btn" id="nextBig">Hoyo ${r.holes[i+1].n} ›</button>`:`<button class="btn" id="finish">Terminar ronda</button>`}
       <button class="btn ghost" id="card">Tarjeta</button>
@@ -420,7 +428,7 @@ function renderCard(){
   else rows=r.holes.map(row).join("");
   rows+=`<tr class="tot"><td>Total</td><td>${t.parAll}</td><td>${t.pl?t.s:"–"}</td><td>${t.pl?t.p:"–"}</td><td>${diffTxt(t.diff,t.pl)}</td></tr>`;
   const use={};for(const h of r.holes)for(const c of h.shots)use[c]=(use[c]||0)+1;
-  const known=[...CLUBS,PUTTER,OTRO], order=[...known.filter(c=>use[c]),...Object.keys(use).filter(c=>!known.includes(c))]; const max=Math.max(1,...Object.values(use));
+  const known=[...CLUBS,PUTTER,OTRO,PENAL], order=[...known.filter(c=>use[c]),...Object.keys(use).filter(c=>!known.includes(c))]; const max=Math.max(1,...Object.values(use));
   app.innerHTML=`<section>
     <div><h2>${esc(r.course||"Sin cancha")}</h2>
     <div class="info"><span>${fmtDate(r.date)}${r.time?" · "+esc(r.time)+" h":""}</span>${r.place?`<span>${esc(r.place)}</span>`:""}${r.partners?.length?`<span>Con <b>${esc(r.partners.join(", "))}</b></span>`:""}</div></div>
