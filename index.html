@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Golf">
+<meta name="theme-color" content="#1f5e3b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Tarjeta de Golf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: one-column phone app; sticky header, hole strip, big tap targets for clubs, scorecard table with real golf marks (circle birdie, square bogey). */
+:root{
+  --bg:#f5f7f3; --surface:#ffffff; --ink:#15261c; --muted:#5d6e63; --line:#d7e0d8;
+  --green:#1f5e3b; --green-ink:#ffffff; --green-soft:#e2eee5; --flag:#e8b923; --danger:#b23a2e; --sand:#efe6cf;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Sans 3",-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1712; --surface:#17221b; --ink:#e7efe9; --muted:#9db0a3; --line:#2a3a30;
+  --green:#3f9a66; --green-ink:#08130c; --green-soft:#1d3326; --flag:#f0c63e; --danger:#e0695c; --sand:#2d2a1f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1712; --surface:#17221b; --ink:#e7efe9; --muted:#9db0a3; --line:#2a3a30;
+  --green:#3f9a66; --green-ink:#08130c; --green-soft:#1d3326; --flag:#f0c63e; --danger:#e0695c; --sand:#2d2a1f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 var(--body);-webkit-tap-highlight-color:transparent}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+header.top h1{font:700 26px/1 var(--display);letter-spacing:.02em;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.sync{font-size:12px;color:var(--muted);white-space:nowrap}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--flag);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:0 18px;border-radius:10px;font-weight:700;background:var(--green);color:var(--green-ink)}
+.btn.ghost{background:transparent;color:var(--green);border:1.5px solid var(--green)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.small{min-height:36px;padding:0 12px;font-size:14px}
+.btn.wide{width:100%}
+.icon-btn{min-width:40px;min-height:40px;border-radius:10px;font-size:22px;color:var(--green);font-weight:700}
+.label{font:600 13px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:14px;padding-top:16px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty p{margin:0;color:var(--muted);max-width:32ch}
+.round{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;text-align:left;width:100%}
+.round .course{font:700 20px/1.1 var(--display);text-transform:uppercase;min-width:0;overflow-wrap:anywhere}
+.round .meta{color:var(--muted);font-size:14px;grid-column:1}
+.round .score{grid-row:1/span 2;grid-column:2;text-align:right;font:700 34px/1 var(--display);font-variant-numeric:tabular-nums}
+.round .score small{display:block;font:600 13px/1.2 var(--body);color:var(--muted)}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--flag);color:#2a2100}
+form{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;min-height:46px;padding:0 12px;width:100%;min-width:0}
+.seg{display:flex;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;min-height:40px;border-radius:8px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--green);color:var(--green-ink)}
+.partners{display:flex;flex-direction:column;gap:8px}
+.partner{display:flex;gap:8px}
+/* play */
+.strip{display:flex;gap:6px;overflow-x:auto;padding-block:10px 4px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:0 0 auto;width:42px;height:50px;border-radius:9px;background:var(--surface);border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.strip button b{font:700 17px/1 var(--display)}
+.strip button span{font-size:11px;color:var(--muted)}
+.strip button[aria-current="true"]{border-color:var(--green);background:var(--green-soft)}
+.strip button.has span{color:var(--ink);font-weight:700}
+.hole{background:var(--green);color:var(--green-ink);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
+.hole .nav{font-size:30px;min-width:44px;min-height:54px;color:inherit;border-radius:10px}
+.hole .nav:disabled{opacity:.3}
+.hole .mid{text-align:center}
+.hole .num{font:700 44px/1 var(--display)}
+.hole .num small{font-size:20px;opacity:.75;margin-right:4px}
+.pars{display:flex;justify-content:center;gap:6px;margin-top:6px}
+.pars button{min-width:48px;min-height:32px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:14px;color:inherit;opacity:.75}
+.pars button[aria-pressed="true"]{background:var(--flag);border-color:var(--flag);color:#2a2100;opacity:1}
+.tally{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tally div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.tally b{display:block;font:700 30px/1 var(--display);font-variant-numeric:tabular-nums}
+.tally span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.playgrid{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;align-items:start}
+.used{position:sticky;top:calc(env(safe-area-inset-top,0px) + 66px);display:flex;flex-direction:column;gap:8px;min-width:0}
+.clubs{display:flex;flex-direction:column;gap:4px}
+.clubs button{min-height:37px;border-radius:9px;background:var(--surface);border:1.5px solid var(--line);font:700 18px/1 var(--display);text-transform:uppercase;padding:2px 6px}
+.clubs button:active{background:var(--green-soft);transform:scale(.97)}
+.clubs .putter{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+.clubs .other{background:var(--sand);color:var(--muted)}
+.courses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.courses button{min-height:54px;border-radius:10px;background:var(--surface);border:1.5px solid var(--line);font:700 16px/1.05 var(--display);text-transform:uppercase;padding:4px;overflow-wrap:anywhere}
+.courses button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--green-ink)}
+.courses button.new{border-style:dashed;color:var(--green)}
+.courses button.new[aria-pressed="true"]{border-style:solid;color:var(--green-ink)}
+.shots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.shots li{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px}
+.shots li::before{counter-increment:s;content:counter(s);font:700 18px/1 var(--display);color:var(--muted);width:20px;font-variant-numeric:tabular-nums}
+.shots li span{flex:1;font-weight:600}
+.shots li button{color:var(--muted);font-size:20px;min-width:36px;min-height:36px;border-radius:8px}
+.hint{color:var(--muted);font-size:14px;margin:0}
+.bar{display:flex;gap:10px}
+.bar .btn{flex:1}
+/* card */
+.info{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:14px}
+.info b{color:var(--ink)}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line)}
+th{font:600 12px/1 var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+td.h{font:700 18px/1 var(--display)}
+tr.sub td{background:var(--green-soft);font-weight:700}
+tr.tot td{background:var(--green);color:var(--green-ink);font-weight:700;border-bottom:0}
+tr.clickable{cursor:pointer}
+.mark{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font:700 18px/1 var(--display)}
+.mark.eagle{border:2px solid var(--green);border-radius:50%;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--green)}
+.mark.birdie{border:2px solid var(--green);border-radius:50%}
+.mark.bogey{border:2px solid var(--muted)}
+.mark.dbl{border:2px solid var(--muted);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:12px 18px;font-size:13px;color:var(--muted);align-items:center}
+.legend .mark{width:22px;height:22px;font-size:13px;margin-right:6px}
+.usage{display:flex;flex-direction:column;gap:6px}
+.usage div{display:grid;grid-template-columns:90px 1fr 34px;align-items:center;gap:10px;font-size:14px}
+.usage i{display:block;height:10px;border-radius:5px;background:var(--green)}
+.usage b{text-align:right;font-variant-numeric:tabular-nums}
+.confirm{background:var(--surface);border:1.5px solid var(--danger);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.confirm p{margin:0}
+h2{font:700 20px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;margin:8px 0 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.clubs button:active{transform:none}}
+html{color-scheme:light;-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+.backup{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header class="top">
+    <button class="icon-btn" id="back" aria-label="Volver" hidden>‹</button>
+    <h1 id="title">Mis rondas</h1>
+    <span class="sync" id="sync">Guardado en este teléfono</span>
+  </header>
+  <main id="app"></main>
+</div>
+
+<script>
+const CLUBS=["Drive","Madera 3","Híbrido 4","Madera 5","Hierro 5","Hierro 6","Hierro 7","Hierro 8","Hierro 9","P","A","54","60"];
+const PUTTER="Putter", OTRO="Otro";
+const DEFAULT_COURSES=["Golfer's","Palermo","Pilara"];
+const norm=s=>String(s||"").trim().toLowerCase();
+function byNewest(){return Object.values(rounds).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
+function recentCourses(){
+  const out=[];
+  for(const r of byNewest()){const c=(r.course||"").trim();if(c&&!out.some(x=>norm(x)===norm(c)))out.push(c);if(out.length===3)break}
+  for(const d of DEFAULT_COURSES){if(out.length===3)break;if(!out.some(x=>norm(x)===norm(d)))out.push(d)}
+  return out;
+}
+/* par de cada hoyo según la última ronda jugada en esa cancha */
+function parsFor(course){
+  const m={};
+  for(const r of byNewest().reverse())if(norm(r.course)===norm(course))for(const h of r.holes)m[h.n]=h.par;
+  return m;
+}
+const LS="golf.rounds.v1", LSDEL="golf.deleted.v1";
+const $=s=>document.querySelector(s);
+const app=$("#app");
+let rounds={}, deleted=[], view={name:"list"};
+let db=null, uid=null;
+
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+rounds=lsGet(LS,{}); deleted=lsGet(LSDEL,[]);
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function uidGen(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function nowTime(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function fmtDate(s){if(!s)return"";const [y,m,d]=s.split("-");const M=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];return `${+d} ${M[m-1]} ${y}`}
+function strokes(h){return h.shots.length}
+function putts(h){return h.shots.filter(c=>c===PUTTER).length}
+function totals(r,from=0,to=r.holes.length){
+  let s=0,p=0,par=0,pl=0,parAll=0;
+  for(const h of r.holes.slice(from,to)){parAll+=h.par;if(h.shots.length){s+=strokes(h);p+=putts(h);par+=h.par;pl++}}
+  return {s,p,par,pl,parAll,diff:s-par};
+}
+function diffTxt(d,pl){if(!pl)return"–";return d===0?"E":(d>0?"+"+d:String(d))}
+
+/* ---------- guardado ---------- */
+let sTimer=null, dirty=new Set(), flushing=false;
+function setSync(t){$("#sync").textContent=t}
+function save(r){
+  r.updatedAt=Date.now(); rounds[r.id]=r; lsSet(LS,rounds);
+  dirty.add(r.id); clearTimeout(sTimer); sTimer=setTimeout(flush,700);
+}
+async function flush(){
+  if(!db||flushing)return; flushing=true;
+  try{
+    for(const id of [...deleted]){await col().doc(id).delete();deleted=deleted.filter(x=>x!==id);lsSet(LSDEL,deleted)}
+    for(const id of [...dirty]){dirty.delete(id);const r=rounds[id];if(r)await col().doc(id).set(JSON.parse(JSON.stringify(r)))}
+    setSync("Guardado en tu cuenta");
+  }catch(e){setSync("Guardado en este teléfono");}
+  flushing=false; if(dirty.size)setTimeout(flush,3000);
+}
+function col(){return db.collection("data/users/"+uid)}
+async function initCloud(){
+  for(let i=0;i<30&&!window.claude?.use;i++)await new Promise(r=>setTimeout(r,100));
+  if(!window.claude?.use)return;
+  try{
+    const [d,u]=await Promise.all([claude.use("db"),claude.use("user")]);
+    if(!d||!u)return;
+    const id=await u.id(); if(!id)return;
+    db=d; uid=id;
+    const snap=await col().get();
+    let changed=false;
+    for(const doc of snap.docs){
+      const r=doc.data(); if(!r||deleted.includes(doc.id))continue;
+      const loc=rounds[doc.id];
+      if(!loc||(r.updatedAt||0)>(loc.updatedAt||0)){rounds[doc.id]=JSON.parse(JSON.stringify(r));changed=true}
+    }
+    const remote=new Set(snap.docs.map(d=>d.id));
+    for(const id in rounds){const rr=snap.docs.find(d=>d.id===id)?.data();if(!remote.has(id)||(rounds[id].updatedAt||0)>(rr?.updatedAt||0))dirty.add(id)}
+    if(changed){lsSet(LS,rounds);render()}
+    setSync("Guardado en tu cuenta");
+    flush();
+  }catch(e){setSync("Guardado en este teléfono")}
+}
+window.addEventListener("online",()=>flush());
+
+/* ---------- vistas ---------- */
+function go(v){view=v;render();window.scrollTo(0,0)}
+$("#back").onclick=()=>{
+  if(view.name==="play"||view.name==="setup"&&!view.id)go({name:"list"});
+  else if(view.name==="card")go(view.from==="play"?{name:"play",id:view.id,hole:view.hole||0}:{name:"list"});
+  else if(view.name==="setup")go({name:"card",id:view.id});
+  else go({name:"list"});
+};
+
+function render(){
+  $("#back").hidden=view.name==="list";
+  ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard})[view.name]();
+}
+
+function renderList(){
+  $("#title").textContent="Mis rondas";
+  const list=Object.values(rounds).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)||b.createdAt-a.createdAt);
+  let h=`<section><button class="btn wide" id="new">+ Nueva ronda</button>`;
+  if(!list.length){
+    h+=`<div class="empty"><span class="label">Sin rondas todavía</span><p>Cargá la cancha, la fecha y tus compañeros, y anotá cada golpe con el palo que usaste. La app suma golpes y putts por hoyo.</p></div>`;
+  }
+  for(const r of list){
+    const t=totals(r);
+    const open=!r.done;
+    h+=`<button class="round" data-id="${r.id}">
+      <span class="course">${esc(r.course||"Sin cancha")}</span>
+      <span class="score">${t.pl?t.s:"–"}<small>${t.pl?diffTxt(t.diff,t.pl)+" · "+t.p+" putts":"sin golpes"}</small></span>
+      <span class="meta">${fmtDate(r.date)}${r.time?" · "+esc(r.time):""} · ${t.pl}/${r.holes.length} hoyos ${open?'<span class="chip">En juego</span>':""}</span>
+      ${r.partners?.length?`<span class="meta">Con ${esc(r.partners.join(", "))}</span>`:""}
+    </button>`;
+  }
+  h+=`<div class="backup"><span class="label">Copia de seguridad</span>
+    <p class="hint">Las rondas quedan guardadas en este teléfono. Guardá una copia de vez en cuando (en Archivos, WhatsApp o mail) para no perderlas si cambiás de teléfono.</p>
+    <div class="bar"><button class="btn ghost small" id="exp">Guardar copia</button><button class="btn ghost small" id="imp">Recuperar copia</button></div>
+    <input type="file" id="impFile" accept=".json,application/json" hidden>
+    <p class="hint" id="bkMsg" hidden></p></div>`;
+  h+=`</section>`;
+  app.innerHTML=h;
+  $("#new").onclick=()=>go({name:"setup"});
+  app.querySelectorAll(".round").forEach(b=>b.onclick=()=>{const r=rounds[b.dataset.id];go(r.done?{name:"card",id:r.id}:{name:"play",id:r.id,hole:firstOpenHole(r)})});
+  $("#exp").onclick=exportRounds;
+  $("#imp").onclick=()=>$("#impFile").click();
+  $("#impFile").onchange=e=>importRounds(e.target.files[0]);
+}
+function bkMsg(t){const m=$("#bkMsg");if(m){m.hidden=false;m.textContent=t}}
+async function exportRounds(){
+  const data=JSON.stringify({app:"tarjeta-golf",version:1,exportedAt:new Date().toISOString(),rounds},null,1);
+  const name="golf-rondas-"+today()+".json";
+  try{
+    const file=new File([data],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Rondas de golf"});bkMsg("Copia lista.");return}
+  }catch(e){if(e&&e.name==="AbortError")return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+  bkMsg("Copia descargada: "+name);
+}
+async function importRounds(f){
+  if(!f)return;
+  try{
+    const d=JSON.parse(await f.text()), inc=d&&d.rounds;
+    if(!inc||typeof inc!=="object")throw 0;
+    let n=0;
+    for(const id in inc){const r=inc[id];if(!r||!Array.isArray(r.holes))continue;if(!rounds[id]||(r.updatedAt||0)>(rounds[id].updatedAt||0)){rounds[id]=r;n++}}
+    lsSet(LS,rounds);render();bkMsg(n?`Recuperé ${n} ronda${n>1?"s":""}.`:"No había rondas nuevas en esa copia.");
+  }catch{bkMsg("Ese archivo no es una copia de la tarjeta de golf.")}
+}
+
+function firstOpenHole(r){const i=r.holes.findIndex(h=>!h.shots.length);return i<0?r.holes.length-1:Math.max(0,i)}
+
+function renderSetup(){
+  const editing=view.id&&rounds[view.id];
+  const r=editing||{date:today(),time:nowTime(),course:"",place:"",partners:[],n:18,start:1};
+  $("#title").textContent=editing?"Datos de la ronda":"Nueva ronda";
+  const n=editing?r.holes.length:r.n, start=editing?r.holes[0].n:r.start;
+  const partners=[...(r.partners||[])]; while(partners.length<3)partners.push("");
+  const courseOpts=recentCourses();
+  let selCourse=editing?r.course:courseOpts[0], newMode=false;
+  if(editing&&!courseOpts.some(c=>norm(c)===norm(r.course)))courseOpts[2]=r.course;
+  app.innerHTML=`<section><form id="f">
+    <div class="field"><span class="label">Cancha</span>
+      <div class="courses" id="courses">${courseOpts.map((c,k)=>`<button type="button" data-k="${k}">${esc(c)}</button>`).join("")}<button type="button" class="new" data-k="new">Cancha</button></div>
+      <input id="course" placeholder="Nombre de la cancha nueva" aria-label="Nombre de la cancha nueva" hidden>
+      <p class="hint" id="parHint" hidden></p></div>
+    <div class="field"><label class="label" for="place">Lugar</label><input id="place" placeholder="Ciudad o localidad" value="${esc(r.place)}"></div>
+    <div class="row2">
+      <div class="field"><label class="label" for="date">Fecha</label><input id="date" type="date" value="${esc(r.date)}"></div>
+      <div class="field"><label class="label" for="time">Hora de salida</label><input id="time" type="time" value="${esc(r.time)}"></div>
+    </div>
+    ${editing?"":`<div class="field"><span class="label">Hoyos</span>
+      <div class="seg" id="segN"><button type="button" data-v="18">18 hoyos</button><button type="button" data-v="9">9 hoyos</button></div></div>
+    <div class="field" id="startBox"><span class="label">Empiezo en el hoyo</span>
+      <div class="seg" id="segS"><button type="button" data-v="1">1</button><button type="button" data-v="10">10</button></div></div>`}
+    <div class="field"><span class="label">Compañeros</span><div class="partners" id="partners">
+      ${partners.map((p,i)=>`<div class="partner"><input id="p${i}" placeholder="Nombre" value="${esc(p)}" aria-label="Compañero ${i+1}"></div>`).join("")}
+    </div></div>
+    <button class="btn wide" type="submit">${editing?"Guardar cambios":"Empezar a jugar"}</button>
+  </form></section>`;
+  let selN=n, selS=start;
+  const paint=()=>{
+    app.querySelectorAll("#segN button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.v===selN));
+    app.querySelectorAll("#segS button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.v===selS));
+    const sb=$("#startBox"); if(sb)sb.hidden=selN!==9;
+  };
+  const paintCourse=()=>{
+    app.querySelectorAll("#courses button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k==="new"?newMode:(!newMode&&norm(courseOpts[+b.dataset.k])===norm(selCourse))));
+    $("#course").hidden=!newMode;
+    const hint=$("#parHint"), known=!newMode&&Object.keys(parsFor(selCourse)).length;
+    hint.hidden=editing||!known; hint.textContent=known?`Uso el par que guardaste la última vez en ${selCourse}.`:"";
+  };
+  app.querySelectorAll("#courses button").forEach(b=>b.onclick=()=>{
+    if(b.dataset.k==="new"){newMode=true;paintCourse();$("#course").focus()}
+    else{newMode=false;selCourse=courseOpts[+b.dataset.k];paintCourse()}
+  });
+  paintCourse();
+  app.querySelectorAll("#segN button").forEach(b=>b.onclick=()=>{selN=+b.dataset.v;if(selN===18)selS=1;paint()});
+  app.querySelectorAll("#segS button").forEach(b=>b.onclick=()=>{selS=+b.dataset.v;paint()});
+  paint();
+  $("#f").onsubmit=e=>{
+    e.preventDefault();
+    const ps=[...app.querySelectorAll(".partner input")].map(i=>i.value.trim()).filter(Boolean);
+    const course=newMode?$("#course").value.trim():selCourse;
+    if(!course){$("#course").focus();return}
+    const base={course,place:$("#place").value.trim(),date:$("#date").value,time:$("#time").value,partners:ps};
+    if(editing){Object.assign(r,base);save(r);go({name:"card",id:r.id});return}
+    const DEFPAR=[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5];
+    const saved=parsFor(course);
+    const holes=[];for(let i=0;i<selN;i++){const num=selS+i;holes.push({n:num,par:saved[num]||DEFPAR[num-1],shots:[]})}
+    const nr={id:uidGen(),createdAt:Date.now(),...base,holes,done:false};
+    save(nr); go({name:"play",id:nr.id,hole:0});
+  };
+}
+
+function renderPlay(){
+  const r=rounds[view.id]; if(!r)return go({name:"list"});
+  const i=Math.min(view.hole||0,r.holes.length-1), h=r.holes[i], t=totals(r);
+  $("#title").textContent=r.course||"Ronda";
+  const parTxt=h.shots.length?diffTxt(strokes(h)-h.par,1):"–";
+  app.innerHTML=`
+  <nav class="strip" id="strip" aria-label="Hoyos">${r.holes.map((x,k)=>`<button data-k="${k}" ${k===i?'aria-current="true"':""} class="${x.shots.length?"has":""}"><b>${x.n}</b><span>${x.shots.length||"·"}</span></button>`).join("")}</nav>
+  <section>
+    <div class="hole">
+      <button class="nav" id="prev" aria-label="Hoyo anterior" ${i===0?"disabled":""}>‹</button>
+      <div class="mid"><div class="num"><small>HOYO</small>${h.n}</div>
+        <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}">Par ${p}</button>`).join("")}</div></div>
+      <button class="nav" id="next" aria-label="Hoyo siguiente" ${i===r.holes.length-1?"disabled":""}>›</button>
+    </div>
+    <div class="tally">
+      <div><b>${strokes(h)}</b><span>Golpes</span></div>
+      <div><b>${putts(h)}</b><span>Putts</span></div>
+      <div><b>${parTxt}</b><span>Vs. par</span></div>
+    </div>
+    <div class="playgrid">
+      <div class="used"><span class="label">Golpes del hoyo</span>
+        ${h.shots.length?`<ol class="shots">${h.shots.map((c,k)=>`<li><span>${esc(c)}</span><button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")}</ol>`:`<p class="hint">Tocá a la derecha el palo de cada golpe.</p>`}
+      </div>
+      <div class="clubs" aria-label="Palos">${CLUBS.map(c=>`<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}
+        <button class="putter" data-c="${PUTTER}">Putter</button>
+        <button class="other" data-c="${OTRO}">Otro</button></div>
+    </div>
+    <div class="info"><span>Ronda: <b>${t.pl?t.s:0}</b> golpes</span><span><b>${t.p}</b> putts</span><span><b>${diffTxt(t.diff,t.pl)}</b> vs. par</span><span><b>${t.pl}</b>/${r.holes.length} hoyos</span></div>
+    <div class="bar">
+      ${i<r.holes.length-1?`<button class="btn" id="nextBig">Hoyo ${r.holes[i+1].n} ›</button>`:`<button class="btn" id="finish">Terminar ronda</button>`}
+      <button class="btn ghost" id="card">Tarjeta</button>
+    </div>
+  </section>`;
+  const goHole=k=>{view.hole=k;render()};
+  app.querySelectorAll("#strip button").forEach(b=>b.onclick=()=>goHole(+b.dataset.k));
+  const cur=app.querySelector('#strip [aria-current="true"]'); if(cur)cur.scrollIntoView({inline:"center",block:"nearest"});
+  $("#prev").onclick=()=>goHole(i-1);
+  $("#next").onclick=()=>goHole(i+1);
+  const nb=$("#nextBig"); if(nb)nb.onclick=()=>{goHole(i+1);window.scrollTo(0,0)};
+  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);go({name:"card",id:r.id})};
+  app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);render()});
+  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{h.shots.push(b.dataset.c);save(r);render()});
+  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{h.shots.splice(+b.dataset.del,1);save(r);render()});
+  $("#card").onclick=()=>go({name:"card",id:r.id,from:"play",hole:i});
+}
+
+function mark(s,par){
+  if(!s)return `<span class="mark">·</span>`;
+  const d=s-par, c=d<=-2?"eagle":d===-1?"birdie":d===1?"bogey":d>=2?"dbl":"";
+  return `<span class="mark ${c}">${s}</span>`;
+}
+function renderCard(){
+  const r=rounds[view.id]; if(!r)return go({name:"list"});
+  $("#title").textContent="Tarjeta";
+  const N=r.holes.length, t=totals(r);
+  const row=(h,k)=>`<tr class="clickable" data-k="${k}"><td class="h">${h.n}</td><td>${h.par}</td><td>${mark(strokes(h),h.par)}</td><td>${h.shots.length?putts(h):"·"}</td><td>${h.shots.length?diffTxt(strokes(h)-h.par,1):"·"}</td></tr>`;
+  const sub=(lbl,a,b)=>{const x=totals(r,a,b);return `<tr class="sub"><td>${lbl}</td><td>${x.parAll}</td><td>${x.pl?x.s:"–"}</td><td>${x.pl?x.p:"–"}</td><td>${diffTxt(x.diff,x.pl)}</td></tr>`};
+  let rows="";
+  if(N===18){rows=r.holes.slice(0,9).map((h,k)=>row(h,k)).join("")+sub("Ida",0,9)+r.holes.slice(9).map((h,k)=>row(h,k+9)).join("")+sub("Vuelta",9,18)}
+  else rows=r.holes.map(row).join("");
+  rows+=`<tr class="tot"><td>Total</td><td>${t.parAll}</td><td>${t.pl?t.s:"–"}</td><td>${t.pl?t.p:"–"}</td><td>${diffTxt(t.diff,t.pl)}</td></tr>`;
+  const use={};for(const h of r.holes)for(const c of h.shots)use[c]=(use[c]||0)+1;
+  const known=[...CLUBS,PUTTER,OTRO], order=[...known.filter(c=>use[c]),...Object.keys(use).filter(c=>!known.includes(c))]; const max=Math.max(1,...Object.values(use));
+  app.innerHTML=`<section>
+    <div><h2>${esc(r.course||"Sin cancha")}</h2>
+    <div class="info"><span>${fmtDate(r.date)}${r.time?" · "+esc(r.time)+" h":""}</span>${r.place?`<span>${esc(r.place)}</span>`:""}${r.partners?.length?`<span>Con <b>${esc(r.partners.join(", "))}</b></span>`:""}</div></div>
+    <div class="tally">
+      <div><b>${t.pl?t.s:"–"}</b><span>Golpes</span></div>
+      <div><b>${t.p}</b><span>Putts</span></div>
+      <div><b>${diffTxt(t.diff,t.pl)}</b><span>${t.pl}/${N} hoyos</span></div>
+    </div>
+    <div class="tablebox"><table><thead><tr><th>Hoyo</th><th>Par</th><th>Golpes</th><th>Putts</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="legend"><span><span class="mark eagle">2</span> Eagle</span><span><span class="mark birdie">3</span> Birdie</span><span><span class="mark bogey">5</span> Bogey</span><span><span class="mark dbl">6</span> Doble o más</span></div>
+    ${order.length?`<h2>Palos usados</h2><div class="usage">${order.map(c=>`<div><span>${esc(c)}</span><i style="width:${Math.round(use[c]/max*100)}%"></i><b>${use[c]}</b></div>`).join("")}</div>`:""}
+    <div class="bar"><button class="btn" id="play">${r.done?"Corregir golpes":"Seguir jugando"}</button><button class="btn ghost" id="edit">Editar datos</button></div>
+    ${r.done?"":`<button class="btn ghost wide" id="finish">Terminar ronda</button>`}
+    <div id="delBox"><button class="btn ghost small" id="del" style="color:var(--danger);border-color:var(--danger)">Borrar ronda</button></div>
+  </section>`;
+  app.querySelectorAll("tr.clickable").forEach(tr=>tr.onclick=()=>go({name:"play",id:r.id,hole:+tr.dataset.k}));
+  $("#play").onclick=()=>go({name:"play",id:r.id,hole:r.done?0:firstOpenHole(r)});
+  $("#edit").onclick=()=>go({name:"setup",id:r.id});
+  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);render()};
+  $("#del").onclick=()=>{
+    $("#delBox").innerHTML=`<div class="confirm"><p>¿Borrar esta ronda? No se puede recuperar.</p><div class="bar"><button class="btn danger" id="yes">Sí, borrar</button><button class="btn ghost" id="no">Cancelar</button></div></div>`;
+    $("#no").onclick=()=>render();
+    $("#yes").onclick=()=>{delete rounds[r.id];lsSet(LS,rounds);dirty.delete(r.id);deleted.push(r.id);lsSet(LSDEL,deleted);flush();go({name:"list"})};
+  };
+}
+
+render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body></html>
