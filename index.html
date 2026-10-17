@@ -311,7 +311,7 @@ function renderList(){
   h+=`<div class="backup"><span class="label">Copia de seguridad</span>
     <p class="hint">Las rondas quedan guardadas en este teléfono. Guardá una copia de vez en cuando (en Archivos, WhatsApp o mail) para no perderlas si cambiás de teléfono.</p>
     <div class="bar"><button class="btn ghost small" id="exp">Guardar copia</button><button class="btn ghost small" id="imp">Recuperar copia</button></div>
-    <input type="file" id="impFile" accept=".json,application/json" hidden>
+    <input type="file" id="impFile" hidden>
     <p class="hint" id="bkMsg" hidden></p></div>`;
   h+=`</section>`;
   app.innerHTML=h;
