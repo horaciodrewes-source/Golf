@@ -104,7 +104,8 @@ body.playing .wrap{padding-block:0 12px}
 .clubs .drive b{font-size:24px;letter-spacing:.02em}
 .clubs button:active{background:var(--green-soft);transform:scale(.97)}
 .clubs .other b{font-size:20px}
-.clubs .dist{position:absolute;left:6px;top:50%;transform:translateY(-50%);font:600 12px/1 var(--body);font-style:normal;opacity:.75;font-variant-numeric:tabular-nums}
+.clubs .dist{position:absolute;left:5px;top:4px;font:700 15px/1 var(--body);font-style:normal;opacity:.85;font-variant-numeric:tabular-nums}
+.clubs button.hasd{padding-left:20px}
 .admin{display:flex;flex-direction:column;gap:10px}
 .admin .btn{min-height:54px;font-size:17px}
 .bagrow{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;align-items:center}
@@ -402,7 +403,7 @@ function renderPlay(){
   const front=h.n<=9, nineHoles=r.holes.filter(x=>(x.n<=9)===front);
   const nine=nineHoles.reduce((a,x)=>{if(x.shots.length){a.s+=strokes(x);a.par+=x.par;a.pl++}return a},{s:0,par:0,pl:0});nine.diff=nine.s-nine.par;
   const hd=strokes(h)-h.par, resTxt=h.shots.length?resultName(strokes(h),h.par):"–", resCls=!h.shots.length?"":hd<0?"good":hd>0?"bad":"";
-  const B=bag, clubBtn=b=>`<button data-c="${esc(b.name)}" class="${clubKind(b.name)}${/^Driv/i.test(b.name)?" drive":""}">${b.dist?`<i class="dist">${esc(b.dist)}</i>`:""}${clubLabel(b.name)}</button>`;
+  const B=bag, clubBtn=b=>`<button data-c="${esc(b.name)}" class="${clubKind(b.name)}${/^Driv/i.test(b.name)?" drive":""}${b.dist?" hasd":""}">${b.dist?`<i class="dist">${esc(b.dist)}</i>`:""}${clubLabel(b.name)}</button>`;
   $("#sync").textContent=t.pl?`Ronda ${t.s} · ${diffTxt(t.diff,t.pl)}`:"";
   app.innerHTML=`
   <nav class="strip" id="strip" aria-label="Hoyos">${r.holes.map((x,k)=>`<button data-k="${k}" ${k===i?'aria-current="true"':""} class="${x.shots.length?"has":""}"><b>${x.n}</b><span>${x.shots.length||"·"}</span></button>`).join("")}</nav>
