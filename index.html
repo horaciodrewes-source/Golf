@@ -79,9 +79,17 @@ input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5p
 .hole .ecl.better{background:#2a1f4a}.hole .ecl.better b{color:#7fd39f}
 .eclrow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .eclcol{display:flex;flex-direction:column;gap:6px}
-.eclh{display:grid;grid-template-columns:34px 40px 1fr;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
-.eclh .n{font-weight:700}.eclh .p{color:var(--muted);font-size:13px}
-.eclh input{min-height:40px;text-align:center;font-weight:700;font-size:18px;padding:0 4px}
+body.light{--bg:#eef0f4;--surface:#ffffff;--ink:#1d2433;--muted:#5b6475;--line:#cfd5de;--green:#1f7a4a;--green-ink:#fff;color-scheme:light}
+.eclhead,.eclh{display:grid;grid-template-columns:30px 34px 1fr;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.eclhead{font:600 12px/1 var(--body);color:var(--muted);letter-spacing:.06em;text-align:center;padding:2px 0}
+.eclh .n{font-weight:700;text-align:center;color:#3a4357}.eclh .p{font:700 26px/1 var(--display);color:#1f8f55;text-align:center}
+.eclh input{min-height:44px;text-align:center;font:700 26px/1 var(--display);padding:0 4px;border-radius:8px;border:1.5px solid #c3c9d3;background:#fff;color:#111}
+.eclh input.bir{background:#bfe7ff;border-color:#7cc4ee}
+.eclh input.bog{background:#f4ee4e;border-color:#e2da2a}
+.eclh input.dbl{background:#ef4a6a;border-color:#e0345a;color:#fff}
+.eclkey{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.eclkey i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px;border:1.5px solid #c3c9d3;background:#fff}
+.eclkey i.bir{background:#bfe7ff;border-color:#7cc4ee}.eclkey i.bog{background:#f4ee4e;border-color:#e2da2a}.eclkey i.dbl{background:#ef4a6a;border-color:#e0345a}
 .ecltot{display:flex;justify-content:space-between;font-weight:700;padding:6px 2px;border-top:1px solid var(--line)}
 .eclsum{display:flex;justify-content:space-around;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
 .eclsum div{display:flex;flex-direction:column;align-items:center;gap:2px}.eclsum b{font:700 26px/1 var(--display)}
@@ -348,6 +356,7 @@ function render(){
   $("#back").hidden=view.name==="list"&&!listMode.archived;
   if(view.name!=="play")$("#sync").textContent=syncTxt;
   document.body.classList.toggle("playing",view.name==="play");
+  document.body.classList.toggle("light",view.name==="ecl");
   ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard,admin:renderAdmin,bag:renderBag,send:renderSend,ecl:renderEcl})[view.name]();
 }
 
@@ -615,17 +624,19 @@ function renderEcl(){
   updateEcl();
   const e=ecl||{course:"Golfer's",from:"",to:"",scores:Array(18).fill(0),pars:[],applied:[]};
   const pars=e.pars&&e.pars.length===18?e.pars:(knownPars(e.course)||[]);
-  const col=a=>`<div class="eclcol">${a.map(k=>`<label class="eclh"><span class="n">${k+1}</span><span class="p">${pars[k]?"P"+pars[k]:""}</span><input id="es${k}" value="${e.scores[k]||""}" inputmode="numeric" maxlength="2" aria-label="Hoyo ${k+1}"></label>`).join("")}<div class="ecltot"><span>Total</span><span id="et${a[0]}"></span></div></div>`;
+  const col=a=>`<div class="eclcol"><div class="eclhead"><span>H</span><span>P</span><span>SCORE</span></div>${a.map(k=>`<label class="eclh"><span class="n">${k+1}</span><span class="p">${pars[k]||""}</span><input id="es${k}" value="${e.scores[k]||""}" inputmode="numeric" maxlength="2" aria-label="Hoyo ${k+1}"></label>`).join("")}<div class="ecltot"><span>Total</span><span id="et${a[0]}"></span></div></div>`;
   app.innerHTML=`<section><form id="eclF" class="admin">
     <div class="eclsum"><div><span class="label">Gross</span><b id="eG">–</b></div><div><span class="label">Hcp</span><b><input id="eH" value="${esc(e.hcp||"")}" inputmode="decimal" maxlength="5" style="width:70px;text-align:center;font-weight:700;font-size:20px;min-height:36px"></b></div><div><span class="label">Neto</span><b id="eN">–</b></div></div>
     <label class="field"><span class="label">Cancha</span><input id="eC" value="${esc(e.course||"")}"></label>
     <div class="ecldates"><label class="field"><span class="label">Desde</span><input type="date" id="eF" value="${esc(e.from||"")}"></label><label class="field"><span class="label">Hasta</span><input type="date" id="eT" value="${esc(e.to||"")}"></label></div>
     <div class="eclrow">${col([0,1,2,3,4,5,6,7,8])}${col([9,10,11,12,13,14,15,16,17])}</div>
+    <div class="eclkey"><span><i class="bir"></i>Birdie</span><span><i></i>Par</span><span><i class="bog"></i>Bogey</span><span><i class="dbl"></i>Doble o más</span></div>
     <p class="hint">Cada ronda terminada en esta cancha dentro del período baja automáticamente los hoyos donde mejoraste. Si algo no coincide con el club, corregilo acá.</p>
     <button class="btn" type="submit">Guardar eclectic</button>
   </form></section>`;
   const vals=()=>Array.from({length:18},(_,k)=>+($("#es"+k).value.replace(/\D/g,""))||0);
   const sums=()=>{const v=vals(),a=v.slice(0,9).reduce((x,y)=>x+y,0),b=v.slice(9).reduce((x,y)=>x+y,0),g=a+b,h=parseFloat(($("#eH").value||"").replace(",","."));
+    v.forEach((x,k)=>{const d=x&&pars[k]?x-pars[k]:null;$("#es"+k).className=d===null||d===0?"":d<0?"bir":d===1?"bog":"dbl"});
     $("#et0").textContent=a||"–";$("#et9").textContent=b||"–";$("#eG").textContent=g||"–";$("#eN").textContent=g&&!isNaN(h)?String(Math.round((g-h)*10)/10).replace(".",","):"–"};
   app.querySelectorAll("#eclF input").forEach(x=>x.oninput=sums);sums();
   $("#eclF").onsubmit=ev=>{
