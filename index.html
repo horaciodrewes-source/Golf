@@ -201,9 +201,19 @@ function recentCourses(){
   for(const d of DEFAULT_COURSES){if(out.length===3)break;if(!out.some(x=>norm(x)===norm(d)))out.push(d)}
   return out;
 }
-/* par de cada hoyo según la última ronda jugada en esa cancha */
+/* par oficial de canchas conocidas, para la primera vez que se juegan */
+const KNOWN_PARS=[
+  [["golfers","golferscountryclub","golferscc"],[4,4,4,5,3,4,3,4,5,4,4,5,3,4,4,4,3,5]],
+  [["palermo","lagosdepalermo","golfpalermo","golfdepalermo","campodegolfdepalermo","golfclublagosdepalermo"],[4,4,4,4,3,5,3,4,4,3,5,4,3,5,4,5,4,4]],
+  [["pilara","pilaragolfclub","pilaragolf"],[5,3,4,4,4,4,5,3,4,4,3,4,3,5,4,4,4,5]],
+  [["pilargolf","pilargolfclub","pilargolfazulblanca"],[4,5,4,4,4,3,5,3,4,5,3,4,5,4,4,4,3,4]],
+];
+const courseKey=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+function knownPars(course){const k=courseKey(course),e=KNOWN_PARS.find(([ks])=>ks.includes(k));return e?e[1]:null}
+/* par de cada hoyo según la última ronda jugada en esa cancha; si nunca se jugó, el oficial */
 function parsFor(course){
-  const m={};
+  const m={}, kp=knownPars(course);
+  if(kp)kp.forEach((p,i)=>m[i+1]=p);
   for(const r of byNewest().reverse())if(norm(r.course)===norm(course))for(const h of r.holes)m[h.n]=h.par;
   return m;
 }
@@ -388,8 +398,9 @@ function renderSetup(){
   const paintCourse=()=>{
     app.querySelectorAll("#courses button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k==="new"?newMode:(!newMode&&norm(courseOpts[+b.dataset.k])===norm(selCourse))));
     $("#course").hidden=!newMode;
-    const hint=$("#parHint"), known=!newMode&&Object.keys(parsFor(selCourse)).length;
-    hint.hidden=editing||!known; hint.textContent=known?`Uso el par que guardaste la última vez en ${selCourse}.`:"";
+    const played=!newMode&&byNewest().some(r=>norm(r.course)===norm(selCourse)), official=!newMode&&!played&&knownPars(selCourse);
+    const hint=$("#parHint");
+    hint.hidden=editing||!(played||official); hint.textContent=played?`Uso el par que guardaste la última vez en ${selCourse}.`:official?`Cargo el par de la tarjeta de ${selCourse}. Si algún hoyo no coincide, lo cambiás en el hoyo.`:"";
   };
   app.querySelectorAll("#courses button").forEach(b=>b.onclick=()=>{
     if(b.dataset.k==="new"){newMode=true;paintCourse();$("#course").focus()}
