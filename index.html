@@ -73,6 +73,19 @@ input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5p
 .hole .nav:disabled{opacity:.3}
 .hole .num{font:700 34px/1 var(--display);white-space:nowrap;font-variant-numeric:tabular-nums}
 .hole .num small{font-size:15px;opacity:.75;margin-right:3px}
+.hole .ecl{flex:0 0 auto;min-width:44px;border:1.5px solid #8a6fd1;border-radius:9px;padding:3px 4px;text-align:center;display:flex;flex-direction:column;align-items:center;line-height:1}
+.hole .ecl span{font:700 10px/1 var(--body);letter-spacing:.06em;color:#b9a6ec}
+.hole .ecl b{font:700 22px/1 var(--display);margin-top:2px}
+.hole .ecl.better{background:#2a1f4a}.hole .ecl.better b{color:#7fd39f}
+.eclrow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.eclcol{display:flex;flex-direction:column;gap:6px}
+.eclh{display:grid;grid-template-columns:34px 40px 1fr;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.eclh .n{font-weight:700}.eclh .p{color:var(--muted);font-size:13px}
+.eclh input{min-height:40px;text-align:center;font-weight:700;font-size:18px;padding:0 4px}
+.ecltot{display:flex;justify-content:space-between;font-weight:700;padding:6px 2px;border-top:1px solid var(--line)}
+.eclsum{display:flex;justify-content:space-around;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.eclsum div{display:flex;flex-direction:column;align-items:center;gap:2px}.eclsum b{font:700 26px/1 var(--display)}
+.ecldates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pars{display:flex;gap:4px;flex:1;justify-content:flex-end;min-width:0}
 .pars button{flex:1;max-width:58px;min-height:34px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:13px;color:inherit;opacity:.75;white-space:nowrap;padding:0 2px}
 .pars button[aria-pressed="true"]{background:var(--flag);border-color:var(--flag);color:#2a2100;opacity:1}
@@ -218,6 +231,24 @@ function parsFor(course){
   return m;
 }
 const LS="golf.rounds.v1", LSDEL="golf.deleted.v1";
+/* ---------- eclectic: mejor resultado de cada hoyo en el período ---------- */
+const LSECL="golf.ecl.v1";
+let ecl=(()=>{try{const e=JSON.parse(localStorage.getItem(LSECL));if(e&&Array.isArray(e.scores)&&e.scores.length===18)return e}catch{}return null})();
+function saveEcl(){try{localStorage.setItem(LSECL,JSON.stringify(ecl))}catch{}}
+function eclFor(r){return ecl&&ecl.course&&r&&norm(r.course)===norm(ecl.course)?ecl:null}
+/* suma al eclectic las rondas terminadas (o de días anteriores) de esa cancha dentro del período; cada ronda una sola vez, así una corrección a mano no se pisa */
+function updateEcl(){
+  if(!ecl||!ecl.course)return false;
+  ecl.applied=ecl.applied||[];let ch=false;
+  for(const r of Object.values(rounds)){
+    if(ecl.applied.includes(r.id)||norm(r.course)!==norm(ecl.course))continue;
+    if(!(r.done||(r.date&&r.date<today())))continue;
+    if((ecl.from&&r.date<ecl.from)||(ecl.to&&r.date>ecl.to))continue;
+    for(const h of r.holes){if(!h.shots.length)continue;const k=h.n-1,v=h.shots.length;if(!ecl.scores[k]||v<ecl.scores[k]){ecl.scores[k]=v;ecl.pars&&(ecl.pars[k]=h.par)}}
+    ecl.applied.push(r.id);ch=true;
+  }
+  if(ch)saveEcl();return ch;
+}
 const $=s=>document.querySelector(s);
 const app=$("#app");
 let rounds={}, deleted=[], view={name:"list"};
@@ -309,7 +340,7 @@ $("#back").onclick=()=>{
   if(view.name==="play"||view.name==="setup"&&!view.id)go({name:"list"});
   else if(view.name==="card")go(view.from==="play"?{name:"play",id:view.id,hole:view.hole||0}:{name:"list"});
   else if(view.name==="setup")go({name:"card",id:view.id});
-  else if(view.name==="bag"||view.name==="send")go({name:"admin"});
+  else if(view.name==="bag"||view.name==="send"||view.name==="ecl")go({name:"admin"});
   else go({name:"list"});
 };
 
@@ -317,7 +348,7 @@ function render(){
   $("#back").hidden=view.name==="list"&&!listMode.archived;
   if(view.name!=="play")$("#sync").textContent=syncTxt;
   document.body.classList.toggle("playing",view.name==="play");
-  ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard,admin:renderAdmin,bag:renderBag,send:renderSend})[view.name]();
+  ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard,admin:renderAdmin,bag:renderBag,send:renderSend,ecl:renderEcl})[view.name]();
 }
 
 let listMode={archived:false,edit:false,confirm:null};
@@ -441,6 +472,7 @@ function renderPlay(){
       <button class="nav" id="prev" aria-label="Hoyo anterior" ${i===0?"disabled":""}>‹</button>
       <span class="num"><small>HOYO</small>${h.n}</span>
       <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}">Par ${p}</button>`).join("")}</div>
+      ${(()=>{const e=eclFor(r);if(!e)return"";const v=e.scores[h.n-1];return `<div class="ecl${v&&h.shots.length&&h.shots.length<v?" better":""}" aria-label="Eclectic del hoyo ${h.n}: ${v||"sin dato"}"><span>ECLE</span><b>${v||"–"}</b></div>`})()}
       <button class="nav" id="next" aria-label="Hoyo siguiente" ${i===r.holes.length-1?"disabled":""}>›</button>
     </div>
     <div class="tally live">
@@ -467,7 +499,7 @@ function renderPlay(){
   const fwd=()=>{const good=h.shots.length&&h.shots.length<=h.par;goHole(i+1);if(good)fireworks(h.shots.length<h.par?6:3)};
   $("#next").onclick=fwd;
   const nb=$("#nextBig"); if(nb)nb.onclick=()=>{fwd();window.scrollTo(0,0)};
-  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);go({name:"card",id:r.id})};
+  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);updateEcl();go({name:"card",id:r.id})};
   app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);render()});
   app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{h.shots.push(b.dataset.c);save(r);render()});
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{h.shots.splice(+b.dataset.del,1);save(r);render()});
@@ -527,6 +559,7 @@ function renderAdmin(){
     <button class="btn" id="imp">Recuperar copia</button>
     <button class="btn" id="bagBtn">Palos y distancias</button>
     <button class="btn" id="sendBtn">Enviar ronda</button>
+    <button class="btn" id="eclBtn">Eclectic</button>
     <input type="file" id="impFile" hidden>
     <p class="hint" id="bkMsg" hidden></p>
     <p class="hint">Las rondas quedan guardadas en este teléfono. Guardá una copia de vez en cuando (en Drive, Archivos o WhatsApp) para no perderlas si cambiás de teléfono.</p>
@@ -536,10 +569,11 @@ function renderAdmin(){
   $("#impFile").onchange=e=>importRounds(e.target.files[0]);
   $("#bagBtn").onclick=()=>go({name:"bag"});
   $("#sendBtn").onclick=()=>go({name:"send"});
+  $("#eclBtn").onclick=()=>go({name:"ecl"});
 }
 function bkMsg(t){const m=$("#bkMsg");if(m){m.hidden=false;m.textContent=t}}
 async function exportRounds(){
-  const data=JSON.stringify({app:"tarjeta-golf",version:1,exportedAt:new Date().toISOString(),rounds,bag},null,1);
+  const data=JSON.stringify({app:"tarjeta-golf",version:1,exportedAt:new Date().toISOString(),rounds,bag,ecl},null,1);
   const name="golf-rondas-"+today()+".json";
   try{
     const file=new File([data],name,{type:"application/json"});
@@ -556,6 +590,7 @@ async function importRounds(f){
     let n=0;
     for(const id in inc){const r=inc[id];if(!r||!Array.isArray(r.holes))continue;if(!rounds[id]||(r.updatedAt||0)>(rounds[id].updatedAt||0)){rounds[id]=r;n++}}
     if(Array.isArray(d.bag)&&d.bag.length===13){bag=d.bag;lsSet(LSBAG,bag)}
+    if(d.ecl&&Array.isArray(d.ecl.scores)&&d.ecl.scores.length===18){ecl=d.ecl;saveEcl()}
     lsSet(LS,rounds);render();bkMsg(n?`Recuperé ${n} ronda${n>1?"s":""}.`:"No había rondas nuevas en esa copia.");
   }catch{bkMsg("Ese archivo no es una copia de la tarjeta de golf.")}
 }
@@ -574,6 +609,33 @@ function renderBag(){
     lsSet(LSBAG,bag);go({name:"admin"});
   };
   $("#bagReset").onclick=()=>{bag=DEFAULT_BAG.map(x=>({...x}));lsSet(LSBAG,bag);render()};
+}
+function renderEcl(){
+  $("#title").textContent="Eclectic";
+  updateEcl();
+  const e=ecl||{course:"Golfer's",from:"",to:"",scores:Array(18).fill(0),pars:[],applied:[]};
+  const pars=e.pars&&e.pars.length===18?e.pars:(knownPars(e.course)||[]);
+  const col=a=>`<div class="eclcol">${a.map(k=>`<label class="eclh"><span class="n">${k+1}</span><span class="p">${pars[k]?"P"+pars[k]:""}</span><input id="es${k}" value="${e.scores[k]||""}" inputmode="numeric" maxlength="2" aria-label="Hoyo ${k+1}"></label>`).join("")}<div class="ecltot"><span>Total</span><span id="et${a[0]}"></span></div></div>`;
+  app.innerHTML=`<section><form id="eclF" class="admin">
+    <div class="eclsum"><div><span class="label">Gross</span><b id="eG">–</b></div><div><span class="label">Hcp</span><b><input id="eH" value="${esc(e.hcp||"")}" inputmode="decimal" maxlength="5" style="width:70px;text-align:center;font-weight:700;font-size:20px;min-height:36px"></b></div><div><span class="label">Neto</span><b id="eN">–</b></div></div>
+    <label class="field"><span class="label">Cancha</span><input id="eC" value="${esc(e.course||"")}"></label>
+    <div class="ecldates"><label class="field"><span class="label">Desde</span><input type="date" id="eF" value="${esc(e.from||"")}"></label><label class="field"><span class="label">Hasta</span><input type="date" id="eT" value="${esc(e.to||"")}"></label></div>
+    <div class="eclrow">${col([0,1,2,3,4,5,6,7,8])}${col([9,10,11,12,13,14,15,16,17])}</div>
+    <p class="hint">Cada ronda terminada en esta cancha dentro del período baja automáticamente los hoyos donde mejoraste. Si algo no coincide con el club, corregilo acá.</p>
+    <button class="btn" type="submit">Guardar eclectic</button>
+  </form></section>`;
+  const vals=()=>Array.from({length:18},(_,k)=>+($("#es"+k).value.replace(/\D/g,""))||0);
+  const sums=()=>{const v=vals(),a=v.slice(0,9).reduce((x,y)=>x+y,0),b=v.slice(9).reduce((x,y)=>x+y,0),g=a+b,h=parseFloat(($("#eH").value||"").replace(",","."));
+    $("#et0").textContent=a||"–";$("#et9").textContent=b||"–";$("#eG").textContent=g||"–";$("#eN").textContent=g&&!isNaN(h)?String(Math.round((g-h)*10)/10).replace(".",","):"–"};
+  app.querySelectorAll("#eclF input").forEach(x=>x.oninput=sums);sums();
+  $("#eclF").onsubmit=ev=>{
+    ev.preventDefault();
+    const course=$("#eC").value.trim(),changed=!ecl||norm(course)!==norm(ecl.course)||$("#eF").value!==ecl.from||$("#eT").value!==ecl.to;
+    ecl={course,from:$("#eF").value,to:$("#eT").value,hcp:$("#eH").value.trim(),scores:vals(),pars:pars.slice(),applied:changed?[]:(ecl.applied||[])};
+    if(changed){/* rondas ya jugadas antes de cargarlo se suponen incluidas en lo que escribiste */
+      for(const r of Object.values(rounds))if(norm(r.course)===norm(course)&&(r.done||r.date<today()))ecl.applied.push(r.id)}
+    saveEcl();go({name:"admin"});
+  };
 }
 function renderSend(){
   $("#title").textContent="Enviar ronda";
@@ -601,6 +663,10 @@ async function sendRound(r){
   bkMsg("Copiá este texto y pegalo donde quieras.");
 }
 
+/* eclectic inicial de Horacio en Golfer's (tarjeta del club, 22/08 al 29/11/2026): solo en el teléfono que ya jugó ahí antes de esta versión */
+if(!ecl){const prev=Object.values(rounds).filter(r=>norm(r.course)==="golfer's"&&(r.createdAt||0)<Date.UTC(2026,9,26,12));
+  if(prev.length){ecl={course:"Golfer's",from:"2026-08-22",to:"2026-11-29",hcp:"16.5",scores:[5,5,5,6,3,5,3,5,6,4,5,7,3,4,4,5,4,6],pars:[4,4,4,5,3,4,3,4,5,4,4,5,3,4,4,4,3,5],applied:prev.map(r=>r.id)};saveEcl()}}
+updateEcl();
 render();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
