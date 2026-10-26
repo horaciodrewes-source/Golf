@@ -178,6 +178,8 @@ tr.clickable{cursor:pointer}
 .mark.bogey{border:2px solid var(--muted)}
 .mark.dbl{border:2px solid var(--muted);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--muted)}
 .legend{display:flex;flex-wrap:wrap;gap:12px 18px;font-size:13px;color:var(--muted);align-items:center}
+td.eclb{background:#e0345a;color:#fff}td.eclb .mark{border-color:#fff;box-shadow:none}
+.legend .eclb{display:inline-block;width:22px;height:22px;border-radius:5px;background:#e0345a;vertical-align:middle;margin-right:6px}
 .legend .mark{width:22px;height:22px;font-size:13px;margin-right:6px}
 .usage{display:flex;flex-direction:column;gap:6px}
 .usage div{display:grid;grid-template-columns:90px 1fr 34px;align-items:center;gap:10px;font-size:14px}
@@ -252,8 +254,9 @@ function updateEcl(){
     if(ecl.applied.includes(r.id)||norm(r.course)!==norm(ecl.course))continue;
     if(!(r.done||(r.date&&r.date<today())))continue;
     if((ecl.from&&r.date<ecl.from)||(ecl.to&&r.date>ecl.to))continue;
-    for(const h of r.holes){if(!h.shots.length)continue;const k=h.n-1,v=h.shots.length;if(!ecl.scores[k]||v<ecl.scores[k]){ecl.scores[k]=v;ecl.pars&&(ecl.pars[k]=h.par)}}
-    ecl.applied.push(r.id);ch=true;
+    const imp=[];
+    for(const h of r.holes){if(!h.shots.length)continue;const k=h.n-1,v=h.shots.length;if(!ecl.scores[k]||v<ecl.scores[k]){if(ecl.scores[k])imp.push(h.n);ecl.scores[k]=v;ecl.pars&&(ecl.pars[k]=h.par)}}
+    ecl.applied.push(r.id);(ecl.imp=ecl.imp||{})[r.id]=imp;ch=true;
   }
   if(ch)saveEcl();return ch;
 }
@@ -524,7 +527,8 @@ function renderCard(){
   const r=rounds[view.id]; if(!r)return go({name:"list"});
   $("#title").textContent="Tarjeta";
   const N=r.holes.length, t=totals(r);
-  const row=(h,k)=>`<tr class="clickable" data-k="${k}"><td class="h">${h.n}</td><td>${h.par}</td><td>${mark(strokes(h),h.par)}</td><td>${h.shots.length?putts(h):"·"}</td><td>${h.shots.length?diffTxt(strokes(h)-h.par,1):"·"}</td></tr>`;
+  const e=eclFor(r), better=new Set(e?(e.imp&&e.imp[r.id])||((e.applied||[]).includes(r.id)?[]:r.holes.filter(h=>h.shots.length&&e.scores[h.n-1]&&h.shots.length<e.scores[h.n-1]).map(h=>h.n)):[]);
+  const row=(h,k)=>`<tr class="clickable" data-k="${k}"><td class="h">${h.n}</td><td>${h.par}</td><td${better.has(h.n)?' class="eclb"':""}>${mark(strokes(h),h.par)}</td><td>${h.shots.length?putts(h):"·"}</td><td>${h.shots.length?diffTxt(strokes(h)-h.par,1):"·"}</td></tr>`;
   const sub=(lbl,a,b)=>{const x=totals(r,a,b);return `<tr class="sub"><td>${lbl}</td><td>${x.parAll}</td><td>${x.pl?x.s:"–"}</td><td>${x.pl?x.p:"–"}</td><td>${diffTxt(x.diff,x.pl)}</td></tr>`};
   let rows="";
   if(N===18){rows=r.holes.slice(0,9).map((h,k)=>row(h,k)).join("")+sub("Ida",0,9)+r.holes.slice(9).map((h,k)=>row(h,k+9)).join("")+sub("Vuelta",9,18)}
@@ -541,7 +545,7 @@ function renderCard(){
       <div><b>${diffTxt(t.diff,t.pl)}</b><span>${t.pl}/${N} hoyos</span></div>
     </div>
     <div class="tablebox"><table><thead><tr><th>Hoyo</th><th>Par</th><th>Golpes</th><th>Putts</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="legend"><span><span class="mark eagle">2</span> Eagle</span><span><span class="mark birdie">3</span> Birdie</span><span><span class="mark bogey">5</span> Bogey</span><span><span class="mark dbl">6</span> Doble o más</span></div>
+    <div class="legend"><span><span class="mark eagle">2</span> Eagle</span><span><span class="mark birdie">3</span> Birdie</span><span><span class="mark bogey">5</span> Bogey</span><span><span class="mark dbl">6</span> Doble o más</span>${better.size?`<span><span class="eclb"></span>Mejora tu eclectic</span>`:""}</div>
     ${order.length?`<h2>Palos usados</h2><div class="usage">${order.map(c=>`<div><span>${esc(shotName(c))}</span><i style="width:${Math.round(use[c]/max*100)}%"></i><b>${use[c]}</b></div>`).join("")}</div>`:""}
     <div class="bar"><button class="btn" id="play">${r.done?"Corregir golpes":"Seguir jugando"}</button><button class="btn ghost" id="edit">Editar datos</button></div>
     <button class="btn ghost wide" id="sendOne">Enviar ronda</button><p class="hint" id="bkMsg" hidden></p>
