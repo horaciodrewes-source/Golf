@@ -97,7 +97,7 @@ body.light{--bg:#eef0f4;--surface:#ffffff;--ink:#1d2433;--muted:#5b6475;--line:#
 .eclsum div{display:flex;flex-direction:column;align-items:center;gap:2px}.eclsum b{font:700 26px/1 var(--display)}
 .ecldates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pars{display:flex;gap:4px;flex:1;justify-content:flex-end;min-width:0}
-.pars button{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:9px!important;min-height:44px!important;padding:3px 2px!important}
+.pars button[aria-pressed="true"]{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:9px;min-height:44px;padding:3px 2px}
 .pars button span{font:700 10px/1 var(--body);letter-spacing:.06em}
 .pars button b{font:700 22px/1 var(--display);margin-top:2px}
 .pars button{flex:1;max-width:58px;min-height:34px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:13px;color:inherit;opacity:.75;white-space:nowrap;padding:0 2px}
@@ -492,7 +492,7 @@ function renderPlay(){
     <div class="hole">
       <button class="nav" id="prev" aria-label="Hoyo anterior" ${i===0?"disabled":""}>‹</button>
       <span class="num"><small>H</small>${h.n}</span>
-      <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}" aria-label="Par ${p}"><span>PAR</span><b>${p}</b></button>`).join("")}</div>
+      <div class="pars">${[3,4,5].map(p=>`<button data-p="${p}" aria-pressed="${h.par===p}" aria-label="Par ${p}">${h.par===p?`<span>PAR</span><b>${p}</b>`:`Par ${p}`}</button>`).join("")}</div>
       ${(()=>{const e=eclFor(r);if(!e)return"";const v=e.scores[h.n-1];return `<div class="ecl${v&&h.shots.length&&h.shots.length<v?" better":""}" aria-label="Eclectic del hoyo ${h.n}: ${v||"sin dato"}"><span>ECLE</span><b>${v||"–"}</b></div>`})()}
       <button class="nav" id="next" aria-label="Hoyo siguiente" ${i===r.holes.length-1?"disabled":""}>›</button>
     </div>
@@ -771,7 +771,7 @@ function imgStats(r){
 }
 const toFile=(c,name)=>new Promise(res=>c.toBlob(b=>res(new File([b],name,{type:"image/png"})),"image/png"));
 async function sendRound(r){
-  const link=encodeRound(r), txt=roundText(r)+"\n\nVer la tarjeta completa: "+link;
+  const txt=roundText(r);
   try{
     if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const base="ronda-"+(r.date||today()), files=[await toFile(imgCard(r),base+"-tarjeta.png"),await toFile(imgStats(r),base+"-estadisticas.png")];
@@ -783,10 +783,10 @@ async function sendRound(r){
   const o=$("#shareOut")||$("#bkMsg")?.parentNode; if(o){const ta=document.createElement("textarea");ta.className="sharebox";ta.readOnly=true;ta.value=txt;o.appendChild(ta);ta.select()}
   bkMsg("Copiá este texto y pegalo donde quieras.");
 }
-/* WhatsApp a veces descarta el texto cuando van imágenes: queda un botón para mandar el link aparte */
+/* WhatsApp a veces descarta el texto cuando van imágenes: queda un botón para mandarlo aparte */
 function sendExtra(txt){
   const o=$("#shareOut");if(!o)return;
-  o.innerHTML=`<button class="btn ghost wide" id="sendLink">Mandar también el link y el resumen</button>`;
+  o.innerHTML=`<button class="btn ghost wide" id="sendLink">Mandar también el resumen en texto</button>`;
   $("#sendLink").onclick=async()=>{try{await navigator.share({text:txt})}catch{}};
 }
 
