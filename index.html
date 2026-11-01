@@ -775,7 +775,7 @@ async function sendRound(r){
   try{
     if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const base="ronda-"+(r.date||today()), files=[await toFile(imgCard(r),base+"-tarjeta.png"),await toFile(imgStats(r),base+"-estadisticas.png")];
-    if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,text:txt});sendExtra(txt);return}
+    if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files});sendExtra(txt);return}
     const o=$("#shareOut");if(o&&!navigator.share){o.innerHTML="";for(const f of files){const a=document.createElement("a");a.href=URL.createObjectURL(f);a.download=f.name;a.textContent="Descargar "+f.name;a.className="btn ghost wide";o.appendChild(a)}}
   }catch(e){if(e&&e.name==="AbortError")return}
   try{if(navigator.share){await navigator.share({text:txt});return}}catch(e){if(e&&e.name==="AbortError")return}
@@ -783,11 +783,11 @@ async function sendRound(r){
   const o=$("#shareOut")||$("#bkMsg")?.parentNode; if(o){const ta=document.createElement("textarea");ta.className="sharebox";ta.readOnly=true;ta.value=txt;o.appendChild(ta);ta.select()}
   bkMsg("Copiá este texto y pegalo donde quieras.");
 }
-/* WhatsApp a veces descarta el texto cuando van imágenes: queda un botón para mandarlo aparte */
+/* el texto va aparte (si va con las fotos, WhatsApp lo pega como epígrafe de la primera); el iPhone pide un toque para cada envío */
 function sendExtra(txt){
   const o=$("#shareOut");if(!o)return;
-  o.innerHTML=`<button class="btn ghost wide" id="sendLink">Mandar también el resumen en texto</button>`;
-  $("#sendLink").onclick=async()=>{try{await navigator.share({text:txt})}catch{}};
+  o.innerHTML=`<button class="btn wide" id="sendLink">Ahora mandá el resumen en texto</button>`;
+  $("#sendLink").onclick=async()=>{try{await navigator.share({text:txt});o.innerHTML=""}catch{}};
 }
 
 /* eclectic inicial de Horacio en Golfer's (tarjeta del club, 22/08 al 29/11/2026): solo en el teléfono que ya jugó ahí antes de esta versión */
