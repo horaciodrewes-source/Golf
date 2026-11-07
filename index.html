@@ -70,14 +70,14 @@ input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5p
 .strip button span{font-size:11px;color:var(--muted)}
 .strip button[aria-current="true"]{border-color:var(--green);background:var(--green-soft)}
 .strip button.has span{color:var(--ink);font-weight:700}
-.hole{background:var(--green-soft);border:1.5px solid var(--green);color:var(--ink);border-radius:14px;padding:6px;display:flex;align-items:center;gap:6px;min-height:52px}
+.hole{background:var(--green-soft);border:1.5px solid var(--green);color:var(--ink);border-radius:14px;padding:3px 6px;display:flex;align-items:center;gap:6px;min-height:52px}
 .hole .nav{font-size:28px;min-width:40px;min-height:40px;color:inherit;border-radius:10px;flex:0 0 auto}
 .hole .nav:disabled{opacity:.3}
 .hole .num{font:700 34px/1 var(--display);white-space:nowrap;font-variant-numeric:tabular-nums}
 .hole .num small{font-size:18px;opacity:.75;margin-right:2px}
-.hole .ecl{flex:0 0 auto;min-width:44px;border:1.5px solid #8a6fd1;border-radius:9px;padding:3px 4px;text-align:center;display:flex;flex-direction:column;align-items:center;line-height:1}
-.hole .ecl span{font:700 10px/1 var(--body);letter-spacing:.06em;color:#b9a6ec}
-.hole .ecl b{font:700 22px/1 var(--display);margin-top:2px}
+.hole .ecl{flex:0 0 auto;min-width:58px;height:48px;border:1.5px solid #8a6fd1;border-radius:9px;padding:2px 4px 2px 2px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;line-height:1}
+.hole .ecl span{font:700 10px/1 var(--body);letter-spacing:.08em;color:#b9a6ec;writing-mode:vertical-rl;transform:rotate(180deg)}
+.hole .ecl b{font:700 42px/1 var(--display)}
 .hole .ecl.better{background:#2a1f4a}.hole .ecl.better b{color:#7fd39f}
 .eclrow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .eclcol{display:flex;flex-direction:column;gap:6px}
@@ -89,6 +89,8 @@ body.light{--bg:#eef0f4;--surface:#ffffff;--ink:#1d2433;--muted:#5b6475;--line:#
 .eclh input.bir{background:#bfe7ff;border-color:#7cc4ee}
 .eclh input.bog{background:#f4ee4e;border-color:#e2da2a}
 .eclh input.dbl{background:#ef4a6a;border-color:#e0345a;color:#fff}
+.ocrout{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}.ocrout p,.ocrout ul{margin:0}.ocrout ul{padding-left:20px}
+.eclh input.diff{outline:4px solid #7b5cd6;outline-offset:1px}.eclh input.unsure{outline:3px dashed #e08a00;outline-offset:1px}
 .eclkey{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .eclkey i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px;border:1.5px solid #c3c9d3;background:#fff}
 .eclkey i.bir{background:#bfe7ff;border-color:#7cc4ee}.eclkey i.bog{background:#f4ee4e;border-color:#e2da2a}.eclkey i.dbl{background:#ef4a6a;border-color:#e0345a}
@@ -97,9 +99,9 @@ body.light{--bg:#eef0f4;--surface:#ffffff;--ink:#1d2433;--muted:#5b6475;--line:#
 .eclsum div{display:flex;flex-direction:column;align-items:center;gap:2px}.eclsum b{font:700 26px/1 var(--display)}
 .ecldates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pars{display:flex;gap:4px;flex:1;justify-content:flex-end;min-width:0}
-.pars button[aria-pressed="true"]{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;border-radius:9px;min-height:44px;padding:3px 2px}
-.pars button span{font:700 10px/1 var(--body);letter-spacing:.06em}
-.pars button b{font:700 22px/1 var(--display);margin-top:2px}
+.pars button[aria-pressed="true"]{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;line-height:1;border-radius:9px;height:48px;padding:2px 4px 2px 2px;min-width:58px;max-width:none;flex:0 0 auto}
+.pars button span{font:700 10px/1 var(--body);letter-spacing:.08em;writing-mode:vertical-rl;transform:rotate(180deg)}
+.pars button b{font:700 42px/1 var(--display)}
 .pars button{flex:1;max-width:58px;min-height:34px;border-radius:99px;border:1.5px solid currentColor;font-weight:700;font-size:13px;color:inherit;opacity:.75;white-space:nowrap;padding:0 2px}
 .pars button[aria-pressed="true"]{background:var(--flag);border-color:var(--flag);color:#2a2100;opacity:1}
 .tally{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -640,6 +642,91 @@ function renderBag(){
   };
   $("#bagReset").onclick=()=>{bag=DEFAULT_BAG.map(x=>({...x}));lsSet(LSBAG,bag);render()};
 }
+/* ---------- lectura de la captura del eclectic del club ---------- */
+/* La captura de golferscc.com tiene siempre el mismo diseño: busca los 18 casilleros por color
+   y compara cada número con moldes de la fuente del club (no es OCR general). */
+const OCR_GW=10, OCR_GH=14;
+function ocrGlyphs(img,x0,y0,x1,y1,isInk,gap){
+  const W=img.width, d=img.data, cols=[];
+  for(let x=x0;x<x1;x++){let n=0;for(let y=y0;y<y1;y++){const i=(y*W+x)*4;if(isInk(d[i],d[i+1],d[i+2]))n++}cols.push(n)}
+  const gl=[];let s=-1,empty=0;
+  for(let k=0;k<=cols.length;k++){const on=k<cols.length&&cols[k]>0;
+    if(on){if(s<0)s=k;empty=0}else if(s>=0){empty++;if(empty>=gap||k===cols.length){gl.push([x0+s,x0+k-empty+1]);s=-1;empty=0}}}
+  return gl.map(([a,b])=>{
+    let t=y1,bt=y0,n=0;
+    for(let y=y0;y<y1;y++)for(let x=a;x<b;x++){const i=(y*W+x)*4;if(isInk(d[i],d[i+1],d[i+2])){if(y<t)t=y;if(y>bt)bt=y;n++}}
+    if(!n)return null;
+    const w=b-a,h=bt-t+1,v=new Array(OCR_GW*OCR_GH).fill(0);
+    for(let y=t;y<=bt;y++)for(let x=a;x<b;x++){const i=(y*W+x)*4;if(isInk(d[i],d[i+1],d[i+2]))v[Math.min(OCR_GH-1,((y-t)*OCR_GH/h)|0)*OCR_GW+Math.min(OCR_GW-1,((x-a)*OCR_GW/w)|0)]++}
+    const cell=(w*h)/(OCR_GW*OCR_GH);
+    return {x:a,w,h,ar:w/h,v:v.map(c=>c/cell),n};
+  }).filter(Boolean);
+}
+function ocrMatch(g,T){
+  let best=null,bd=1e9,second=1e9;
+  for(const ch in T)for(const t of T[ch]){let dd=Math.abs(g.ar-t.ar)*6;for(let k=0;k<g.v.length;k++)dd+=Math.abs(g.v[k]-t.v[k]);dd/=g.v.length;
+    if(dd<bd){if(best!==ch)second=bd;bd=dd;best=ch}else if(dd<second&&ch!==best)second=dd}
+  return {ch:best,d:bd,margin:second-bd};
+}
+const near=(a,b,t)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2])<t;
+function px(img,x,y){const i=(y*img.width+x)*4;return [img.data[i],img.data[i+1],img.data[i+2]]}
+/* devuelve los glifos crudos de la captura; ocrRead les pone números con los moldes */
+function ocrScan(img){
+  const W=img.width,H=img.height,k=W/1179,R=v=>Math.round(v*k);
+  const white=[255,255,255];
+  /* el recuadro azul oscuro (nombre, gross, hcp) termina justo arriba de la tabla */
+  let nav=-1;for(let y=Math.round(H*.2);y<Math.round(H*.7);y++){const p=px(img,R(60),y);if(p[0]+p[1]+p[2]<220)nav=y}
+  if(nav<0)return null;
+  const boxes=xc=>{const out=[];let s=-1;
+    for(let y=nav+R(20);y<H-R(250);y++){const on=!near(px(img,xc,y),white,30);
+      if(on&&s<0)s=y; if(!on&&s>=0){const h=y-s;if(h>R(80)&&h<R(135))out.push([s,y]);s=-1}}
+    return out.slice(0,9)};
+  const cols=[[R(405),R(392),R(515)],[R(981),R(968),R(1090)]].map(([xc,xa,xb])=>({xc,xa,xb,bx:boxes(xc)}));
+  if(cols.some(c=>c.bx.length!==9))return null;
+  const cells=[], totals=[];
+  for(const c of cols){
+    for(const [t,b] of c.bx){
+      const bg=px(img,c.xc+R(6),Math.round((t+b)/2));
+      const ink=(r,g,bl)=>!near([r,g,bl],bg,250);
+      // dentro del casillero: desde el borde izquierdo hasta el derecho
+      let xr=c.xc+R(10);while(xr<c.xb&&near(px(img,xr,t+R(10)),bg,60))xr++;
+      cells.push({gl:ocrGlyphs(img,c.xc+R(6),t+R(8),xr-R(6),b-R(8),ink,R(3)),bg});
+    }
+    const lb=c.bx[8][1], bgT=px(img,c.xa,lb+R(70));
+    totals.push(ocrGlyphs(img,c.xa,lb+R(20),c.xb,lb+R(170),(r,g,b)=>!near([r,g,b],bgT,200),R(3)));
+  }
+  // números de arriba (gross, hcp) en blanco sobre azul oscuro, por encima de la tabla
+  let band=null;
+  for(let y=nav-R(10);y>nav-R(300)&&y>0;y--){let n=0;for(let x=R(330);x<R(1170);x+=2){const p=px(img,x,y);if(p[0]>230&&p[1]>230&&p[2]>230)n++}
+    if(n>R(8)){if(!band)band=[y,y];band[0]=y}else if(band&&band[1]-y>R(12))break}
+  let head=[];
+  if(band){const isW=(r,g,b)=>r>170&&g>170&&b>170;const gl=ocrGlyphs(img,R(330),band[0],R(1170),band[1]+1,isW,R(4));
+    // separar gross / hcp por espacios grandes
+    let grp=[[]];gl.forEach((g,i)=>{if(i&&g.x-(gl[i-1].x+gl[i-1].w)>R(40))grp.push([]);grp[grp.length-1].push(g)});head=grp}
+  return {cells,totals,head};
+}
+/* color del casillero en golferscc.com: verde birdie o mejor, blanco par, amarillo bogey, rojo doble, violeta triple o más */
+const OCR_COL=[[[154,241,122],-1],[[255,255,255],0],[[247,246,119],1],[[221,78,107],2],[[158,32,158],3]];
+function ocrRead(img,T,pars){
+  const s=ocrScan(img);if(!s)return null;
+  const num=(gl,TT)=>{let txt="",ok=gl.length>0;const maxH=Math.max(...gl.map(g=>g.h));
+    for(const g of gl){if(g.h<maxH*.35){txt+=".";continue}const m=ocrMatch(g,TT);txt+=m.ch;if(m.d>.14||m.margin<.04)ok=false}
+    return {txt,ok}};
+  const holes=s.cells.map((c,i)=>{
+    const r=num(c.gl,T.card), dg=+r.txt||0, par=pars&&pars[i];
+    let cat=null,bd=1e9;for(const [col,k] of OCR_COL){const d=Math.abs(col[0]-c.bg[0])+Math.abs(col[1]-c.bg[1])+Math.abs(col[2]-c.bg[2]);if(d<bd){bd=d;cat=k}}
+    if(bd>60)cat=null;
+    const byCol=par&&cat!==null&&cat>=0&&cat<=2?par+cat:null;
+    const fits=v=>!par||cat===null||(cat<0?v<par:cat>=3?v>=par+3:v===par+cat);
+    if(r.ok&&fits(dg))return {v:dg,sure:true};
+    if(byCol)return {v:byCol,sure:true};
+    return {v:r.ok?dg:(dg||0),sure:false};
+  });
+  const h=s.head[1]?num(s.head[1],T.head):{ok:false};
+  return {scores:holes.map(x=>x.v),sure:holes.map(x=>x.sure),hcp:h.ok&&/^\d+\.\d$/.test(h.txt)?h.txt:""};
+}
+
+const OCR_T={"card":{"0":[{"ar":0.739,"v":[0,0,0,0,0.27,0.9,0.81,1.16,0.72,0.27,0,0,0,0.54,0.81,1.07,0.81,1.07,0.81,0.72,0,0,0.54,0.81,0.81,0.72,0.45,0.9,0.81,0.54,0,0.36,1.43,1.07,0.36,0,0,0.36,1.07,1.07,0,0.81,1.07,0.27,0,0,0,0.54,0.81,0.81,0.36,0.81,0.98,0,0,0,0,0.54,0.81,0.54,0.72,0.81,0.63,0,0,0,0,0.63,0.81,0.45,1.25,1.07,0.18,0,0,0,0,1.34,1.07,0.18,1.07,0.81,0,0,0,0,0.36,1.07,0.63,0,1.07,0.81,0,0,0,0.09,0.72,1.07,0.27,0,1.07,1.07,0.54,0,0,0.9,1.07,1.16,0,0,0.45,0.81,0.98,0.54,0.72,1.07,0.72,0.09,0,0,0,0.72,1.07,0.81,0.81,0.98,0.09,0,0,0,0,0,0.54,0.63,0.54,0.09,0,0,0,0]}],"1":[{"ar":0.625,"v":[0,0,0,0,0,0,0.39,0.97,1.17,0.87,0,0,0,0,0.1,0.78,0.87,0.87,0.87,0.68,0,0,0.1,0.58,1.17,1.17,1.17,1.17,1.17,0.39,0,0.29,0.78,0.87,0.87,0.49,0.49,0.87,0.78,0,0.78,1.17,1.17,0.87,0.19,0,1.07,1.17,0.58,0,0.78,0.78,0.29,0,0,0.29,0.87,0.87,0.1,0,0.1,0.1,0,0,0,0.58,0.87,0.78,0,0,0,0,0,0,0,1.07,1.17,0.58,0,0,0,0,0,0,0.29,0.87,0.87,0.1,0,0,0,0,0,0,0.97,1.17,0.87,0,0,0,0,0,0,0.19,0.87,0.87,0.29,0,0,0,0,0,0,0.58,1.17,1.17,0,0,0,0,0,0,0,0.58,0.87,0.58,0,0,0,0,0,0,0,0.49,0.87,0.39,0,0,0,0]}],"2":[{"ar":0.75,"v":[0,0,0,0.67,0.96,1.16,1.54,0.77,0.29,0,0,0,0.77,1.16,0.87,0.87,1.16,0.87,0.87,0.1,0,0,0.67,1.06,0.39,0,0.19,0.87,0.87,0.29,0,0,0,0,0,0,0.29,0.87,0.87,0.29,0,0,0,0,0,0,0.87,0.87,0.77,0,0,0,0,0,0,0.39,1.16,0.87,0.29,0,0,0,0,0,0.39,0.87,1.16,0.29,0,0,0,0,0,0.58,1.16,1.16,0.58,0,0,0,0,0,0.29,1.16,0.87,0.29,0,0,0,0,0,0.29,0.87,1.16,0.29,0,0,0,0,0,0.19,0.87,0.87,0.58,0.1,0.29,0.39,0.39,0.29,0.1,0.67,0.87,0.87,1.06,0.87,0.87,1.16,0.87,0.87,0.77,1.16,0.87,0.87,1.16,0.87,0.87,0.96,0.58,0.58,0.58,0.58,0.87,0.67,0.58,0.1,0,0,0,0,0]}],"3":[{"ar":0.681,"v":[0,0,0.37,0.74,0.93,1.49,1.12,1.12,0.74,0.28,0,0.28,0.84,0.84,0.84,1.12,0.84,0.84,0.84,0.74,0,0.19,0.84,0.56,0.28,0.09,0,0.65,1.12,1.12,0,0,0,0,0,0.19,0.74,0.84,0.84,0.47,0,0,0,0.09,0.47,1.12,0.84,0.84,0.47,0,0,0.09,0.65,1.02,1.12,1.4,0.65,0.19,0,0,0,0.47,0.84,0.84,0.84,1.12,0.47,0.09,0,0,0,0.09,0.65,0.84,0.84,1.12,0.84,0.74,0.09,0,0,0,0,0,0.09,0.74,1.12,1.12,0.93,0,0,0,0,0,0,0,0.56,0.84,0.84,0,0,0,0,0,0,0.09,0.74,0.84,0.65,0,0.47,0.47,0.28,0.47,0.65,1.4,1.12,1.02,0.19,0,1.02,0.84,0.84,0.84,0.84,1.12,0.74,0.09,0,0,0.37,0.74,0.84,0.84,0.65,0.56,0,0,0,0]}],"4":[{"ar":0.694,"v":[0,0,0,0.25,0.76,0.76,0,0,0.17,0,0,0,0.08,0.76,0.76,0.67,0,0.25,0.76,0.5,0,0,1.01,1.01,0.92,0.08,0,1.18,1.01,0.67,0,0.42,1.01,0.76,0.08,0,0.34,1.01,0.76,0.08,0.17,1.01,1.34,0.42,0,0.08,0.92,1.34,0.5,0,0.59,0.76,0.84,0,0,0.34,0.76,0.92,0,0,1.26,1.01,0.76,0.25,0.5,1.26,1.01,0.67,0,0,0.67,0.76,1.01,0.76,0.76,1.01,0.76,0.17,0,0,0.25,0.76,1.01,0.67,0.84,1.34,0.76,0,0,0,0,0,0,0,0.67,1.01,0.25,0,0,0,0,0,0,0.25,1.01,1.18,0,0,0,0,0,0,0,0.5,0.76,0.59,0,0,0,0,0,0,0,0.67,1.01,0.67,0,0,0,0,0,0,0,0.25,0.76,0.25,0,0,0,0]},{"ar":0.673,"v":[0,0,0,0.26,0.78,0.78,0,0,0.17,0,0,0,0,0.87,0.78,0.69,0,0.09,0.69,0.61,0,0,0.69,1.39,0.95,0.09,0,0.78,1.04,0.95,0,0.35,0.78,1.04,0.09,0,0.35,0.78,0.78,0.35,0.17,1.04,1.04,0.69,0,0,0.95,1.04,0.87,0,0.61,0.78,0.78,0.09,0,0.09,1.04,0.78,0.17,0,1.3,1.04,0.61,0.35,0.43,0.78,1.39,0.69,0,0,0.69,0.78,0.78,1.04,0.78,0.78,1.04,0.17,0,0,0.17,0.78,0.78,0.95,0.87,1.04,1.13,0,0,0,0,0,0,0,0.69,0.78,0.43,0,0,0,0,0,0,0.26,1.04,1.04,0.17,0,0,0,0,0,0,0.43,0.78,0.61,0,0,0,0,0,0,0,0.69,1.04,0.69,0,0,0,0,0,0,0,0.26,0.78,0.26,0,0,0,0]},{"ar":0.688,"v":[0,0,0,0.53,1.06,0.88,0,0,0.27,0.09,0,0,0.09,0.97,0.8,0.53,0,0.18,0.8,0.71,0,0.09,0.88,1.41,0.71,0,0.09,0.88,1.06,0.88,0,0.53,0.8,0.97,0,0,0.44,0.8,0.8,0.09,0.35,1.06,1.06,0.53,0,0,1.06,1.06,0.53,0,0.71,0.8,0.62,0,0,0.18,1.06,0.8,0,0,0.97,0.8,0.35,0.27,0.44,0.71,1.06,0.44,0,0,0.8,1.06,1.06,1.41,1.06,1.06,1.41,0.09,0,0,0.09,0.53,0.53,0.53,0.62,0.8,0.71,0,0,0,0,0,0,0,0.97,1.06,0.53,0,0,0,0,0,0,0.27,0.8,0.8,0.09,0,0,0,0,0,0,0.53,1.06,0.8,0,0,0,0,0,0,0,0.53,0.8,0.53,0,0,0,0,0,0,0,0.27,0.71,0.27,0,0,0,0]}],"5":[{"ar":0.66,"v":[0,0,0,0,0.29,0.77,1.06,1.15,1.15,0.86,0,0,0,0.29,0.86,0.86,0.86,0.86,0.67,0.86,0,0,0.38,1.15,1.15,0.58,0.19,0,0,0,0,0.1,0.86,0.86,0.58,0,0,0,0,0,0,0.58,0.86,0.86,0.86,0.86,0.67,0.19,0,0,0,0.29,0.77,0.86,0.86,1.06,1.15,1.15,0.38,0,0,0,0,0,0,0.1,0.67,0.86,0.77,0,0,0,0,0,0,0,0.29,0.86,0.86,0,0,0,0,0,0,0,0.38,1.15,1.15,0,0,0,0,0,0,0,0.48,0.86,0.86,0,0,0,0,0,0,0.29,0.86,0.86,0.58,0,1.06,0.58,0.29,0.58,0.77,1.15,1.15,0.86,0.1,0,0.96,0.86,0.86,0.86,0.86,0.86,0.48,0,0,0,0.29,0.77,0.86,0.67,0.48,0.1,0,0,0,0]},{"ar":0.66,"v":[0,0,0,0,0.19,0.67,0.96,1.15,1.15,0.77,0,0,0,0.29,0.86,0.86,0.86,0.77,0.58,0.77,0,0,0.38,1.15,1.15,0.58,0.1,0,0,0,0,0.1,0.86,0.86,0.48,0,0,0,0,0,0,0.48,0.86,0.86,0.86,0.86,0.58,0.1,0,0,0,0.1,0.77,0.86,0.86,1.06,1.15,1.15,0.29,0,0,0,0,0,0,0,0.58,0.86,0.58,0,0,0,0,0,0,0,0.19,0.86,0.86,0,0,0,0,0,0,0,0.19,1.15,1.15,0,0,0,0,0,0,0,0.38,0.86,0.77,0,0,0,0,0,0,0.1,0.77,0.86,0.48,0,0.96,0.38,0.29,0.38,0.67,1.06,1.15,0.86,0.1,0,0.77,0.86,0.86,0.86,0.86,0.77,0.38,0,0,0,0.19,0.58,0.77,0.58,0.38,0,0,0,0,0]}],"6":[{"ar":0.733,"v":[0,0,0,0,0,0.09,0.75,0.94,1.04,0.28,0,0,0,0,0.28,0.75,1.13,0.85,0.85,0.47,0,0,0,0.28,0.85,0.85,0.94,0.28,0.47,0,0,0,0.09,1.04,0.85,0.57,0.09,0,0,0,0,0.09,0.85,1.51,0.85,0.28,0.57,0.28,0.19,0,0,0.47,0.85,1.13,0.75,0.85,1.13,0.85,0.85,0.28,0.09,0.85,0.85,1.13,0.85,0.85,0.75,0.85,0.85,0.75,0.47,0.85,0.85,0.66,0.19,0,0,0.28,0.85,0.85,0.75,0.85,0.57,0,0,0,0,0.38,0.85,0.85,1.23,1.13,0.38,0,0,0,0.28,1.04,1.13,0.47,1.13,0.85,0,0,0,0.28,1.04,0.85,0.57,0,0.94,0.85,0.38,0.38,0.66,0.85,1.13,0.57,0,0,0.57,0.85,0.85,1.13,0.85,0.85,0.75,0,0,0,0,0.57,0.85,1.13,0.66,0.19,0,0,0,0]}],"7":[{"ar":0.571,"v":[0,0.1,0.41,0.71,0.61,1.12,1.22,1.22,1.12,0.41,0,0.61,0.92,0.92,0.61,0.82,0.61,0.92,0.92,0.61,0,0.41,0.61,0.41,0.1,0,0.31,1.22,1.22,0.51,0,0,0,0,0,0,0.82,0.92,0.61,0,0,0,0,0,0,0.82,1.22,0.92,0,0,0,0,0,0,0.41,0.92,0.82,0.1,0,0,0.61,1.22,1.22,1.22,0.82,1.22,0.82,0.1,0,0,0,0.31,0.71,0.92,0.61,0.92,0.92,0.82,0,0,0,0.1,1.12,1.22,0.61,0.1,0.1,0.41,0,0,0,0.51,0.92,0.82,0,0,0,0,0,0,0.2,1.22,1.22,0.41,0,0,0,0,0,0,0.61,0.92,0.61,0,0,0,0,0,0,0,1.22,1.22,0.92,0,0,0,0,0,0,0,0.31,0.92,0.51,0,0,0,0,0,0,0]},{"ar":0.592,"v":[0,0.1,0.49,0.79,0.99,1.18,1.18,1.18,0.99,0.1,0,0.59,0.89,0.89,0.89,0.69,0.69,0.89,0.89,0.49,0,0.39,0.59,0.39,0.1,0,0.69,1.18,1.08,0.2,0,0,0,0,0,0.3,0.89,0.89,0.3,0,0,0,0,0,0.1,1.08,1.18,0.69,0,0,0,0,0,0,0.79,0.89,0.69,0,0,0,0.59,1.18,1.18,1.18,1.18,1.18,0.59,0,0,0,0,0.3,0.69,0.89,0.89,0.89,0.89,0.49,0,0,0,0.1,1.08,1.18,0.79,0,0.39,0.2,0,0,0,0.49,0.89,0.79,0,0,0,0,0,0,0.2,1.18,1.18,0.39,0,0,0,0,0,0,0.59,0.89,0.69,0,0,0,0,0,0,0,1.18,1.18,0.99,0,0,0,0,0,0,0,0.39,0.89,0.49,0,0,0,0,0,0,0]}],"8":[{"ar":0.712,"v":[0,0,0.07,0.58,1.16,1.02,0.65,0.51,0.07,0,0,0,0.65,0.87,1.09,0.87,0.87,1.16,1.09,0.22,0,0,1.16,0.87,0.15,0,0,0.29,1.16,0.87,0,0,0.87,0.51,0,0,0,0,0.87,0.65,0,0,0.73,0.87,0.29,0.22,0.51,0.87,1.16,0.58,0,0,0.15,0.87,1.16,1.16,0.87,1.02,0.44,0,0,0,0.29,0.65,0.87,0.87,0.22,0.07,0,0,0,0.07,1.09,0.87,0.87,1.16,0.29,0,0,0,0,0.8,1.16,0.44,0.07,1.09,0.8,0.07,0,0,0.29,1.16,0.8,0,0,0.87,0.87,0.29,0,0,0.58,0.87,0.29,0,0.07,0.8,0.65,0.07,0,0,1.02,1.09,0,0.29,0.95,1.16,0.44,0,0,0,1.02,1.16,1.09,0.87,1.16,0.58,0,0,0,0,0.07,0.73,0.8,0.36,0.07,0,0,0,0,0]}],"9":[{"ar":0.541,"v":[0,0,0,0.21,0.63,0.83,1.32,0.83,0.42,0,0,0,0.42,1.11,0.83,0.83,0.9,0.83,0.83,0.56,0.14,0.83,1.04,1.25,0.56,0.14,0.21,0.9,1.04,1.04,0.7,0.83,0.83,0.35,0,0,0.9,0.83,0.83,0.42,0.97,0.83,0.56,0,0.07,0.63,1.11,0.83,0.42,0,0.77,1.04,1.04,1.25,1.04,1.04,1.39,0.63,0,0,0,0.35,0.63,0.9,0.83,0.83,0.9,0,0,0,0,0,0,0.35,0.83,0.83,0.42,0,0,0,0,0,0,0.9,1.04,0.9,0,0,0,0,0,0,0,1.11,0.83,0.28,0,0,0,0,0,0,0.35,1.11,0.83,0,0,0,0,0,0,0,0.7,1.39,1.04,0.28,0,0,0,0,0,0,0.83,1.11,0.83,0.56,0,0,0,0,0,0,0.42,1.04,0.42,0,0,0,0,0]}]},"head":{"0":[{"ar":0.792,"v":[0,0,0.31,0.75,1.01,1.26,0.69,0.25,0,0,0,0.38,1.01,1.01,1.01,1.26,1.01,1.01,0.38,0,0.19,1.01,1.01,0.82,0.31,0.38,0.94,1.01,0.94,0.13,0.63,1.01,1.01,0.13,0,0,0.25,1.01,1.01,0.57,0.69,0.75,0.63,0,0,0,0,0.69,0.75,0.57,1.01,1.01,0.63,0,0,0,0,0.75,1.01,1.01,1.07,1.01,0.5,0,0,0,0,0.75,1.01,1.01,1.07,1.01,0.5,0,0,0,0,0.75,1.01,1.01,1.01,1.01,0.63,0,0,0,0,0.75,1.01,0.94,0.63,0.75,0.63,0,0,0,0,0.75,0.75,0.57,0.63,1.01,1.01,0.19,0,0,0.31,1.01,1.01,0.5,0.13,1.01,1.01,0.94,0.38,0.44,0.94,1.01,0.94,0.06,0,0.38,1.01,1.01,1.01,1.26,1.01,1.01,0.38,0,0,0,0.25,0.63,0.75,0.94,0.63,0.13,0,0]}],"1":[{"ar":0.442,"v":[0,0,0.12,0.7,0.82,0.94,1.4,0.94,0.94,0.94,0.35,0.59,0.94,1.4,0.94,0.94,1.4,0.94,0.94,0.94,1.4,0.94,0.94,1.29,0.35,0.59,1.4,0.94,0.94,0.94,1.05,0.59,0.35,0,0,0.35,1.05,0.7,0.7,0.7,0.59,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.35,1.05,0.7,0.7,0.7,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.35,1.05,0.7,0.7,0.7,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.47,1.4,0.94,0.94,0.94,0,0,0,0,0,0.35,1.05,0.7,0.7,0.7]}],"2":[{"ar":0.698,"v":[0,0.07,0.71,0.71,1.14,1.14,0.64,0.5,0,0,0.14,1.07,1.14,0.86,1.14,1.14,0.86,1.14,0.93,0,0.71,1.14,1.14,0.36,0.14,0.29,0.64,1.14,1.14,0.43,1.07,1.14,0.71,0,0,0,0,1.14,1.14,0.64,0.29,0.29,0.14,0,0,0,0,0.86,0.86,0.43,0,0,0,0,0,0,0.29,1.14,1.14,0.43,0,0,0,0,0,0.43,0.86,1.14,0.93,0,0,0,0,0,0.43,1.14,0.86,1.07,0.07,0,0,0,0,0.43,1.14,1.14,0.79,0.21,0,0,0,0,0.43,0.64,0.86,0.79,0.07,0,0,0,0,0.43,1.14,0.86,0.93,0.14,0,0,0,0,0.64,1.14,1.14,0.86,0.64,0.57,0.43,0.57,0.57,0.43,1.14,1.14,1.14,0.86,1.14,1.14,0.86,1.14,1.14,0.86,0.86,0.86,0.86,0.64,0.86,0.86,0.64,0.86,0.86,0.64]},{"ar":0.712,"v":[0,0.29,1.02,0.87,1.16,1.16,0.87,0.8,0.15,0,0.29,1.16,1.16,0.87,1.02,1.16,0.87,1.16,1.09,0.07,0.8,1.16,1.09,0.15,0,0,0.44,1.16,1.16,0.51,0.87,0.87,0.51,0,0,0,0,0.87,0.87,0.51,0.29,0.29,0.15,0,0,0,0,1.16,1.16,0.58,0,0,0,0,0,0,0.51,1.16,1.16,0.29,0,0,0,0,0,0.44,0.65,0.87,0.65,0,0,0,0,0,0.44,1.16,0.87,1.09,0.07,0,0,0,0,0.44,1.16,1.16,0.8,0.22,0,0,0,0,0.73,0.87,1.16,0.95,0.07,0,0,0,0,0.44,0.87,0.65,0.65,0,0,0,0,0,0.65,1.16,1.16,0.87,0.65,0.58,0.44,0.58,0.58,0.44,1.16,1.16,1.16,0.87,1.16,1.16,0.87,1.16,1.16,0.87,0.87,0.87,0.87,0.65,0.87,0.87,0.65,0.87,0.87,0.65]}],"4":[{"ar":0.774,"v":[0,0,0,0,0.13,0.77,1.03,0.77,0.39,0,0,0,0,0,0.77,1.03,1.03,1.03,0.52,0,0,0,0,0.32,1.03,1.03,1.03,1.03,0.52,0,0,0,0.06,0.97,1.03,0.64,1.03,1.03,0.52,0,0,0,0.39,0.77,0.71,0.06,0.77,0.77,0.39,0,0,0.13,0.97,1.03,0.52,0,1.03,1.03,0.52,0,0,0.77,1.03,0.84,0,0,1.03,1.03,0.52,0,0.32,1.03,1.03,0.19,0,0,1.03,1.03,0.52,0,1.03,1.03,0.58,0,0,0,1.03,1.03,0.52,0,0.97,0.77,0.77,0.77,0.77,0.77,0.77,0.77,0.77,0.77,1.29,1.03,1.03,1.03,1.03,1.03,1.03,1.03,1.03,1.03,0.64,0.52,0.52,0.52,0.52,0.52,1.03,1.03,0.77,0.52,0,0,0,0,0,0,1.03,1.03,0.52,0,0,0,0,0,0,0,0.77,0.77,0.39,0]},{"ar":0.788,"v":[0,0,0,0,0.26,1.05,1.05,1.05,0.53,0,0,0,0,0,0.92,1.05,1.05,1.05,0.53,0,0,0,0,0.53,1.05,1.05,1.05,1.05,0.53,0,0,0,0.07,0.79,0.79,0.39,0.79,0.79,0.39,0,0,0,0.59,1.05,0.92,0.07,1.05,1.05,0.53,0,0,0.26,1.05,1.05,0.33,0,1.05,1.05,0.53,0,0,0.66,0.79,0.59,0,0,0.79,0.79,0.39,0,0.33,1.05,1.05,0.2,0,0,1.05,1.05,0.53,0,1.05,1.05,0.59,0,0,0,1.05,1.05,0.53,0,1.31,1.05,1.05,1.05,1.05,1.05,1.05,1.05,1.05,1.05,0.98,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.66,0.53,0.53,0.53,0.53,0.53,1.05,1.05,0.79,0.53,0,0,0,0,0,0,1.05,1.05,0.53,0,0,0,0,0,0,0,0.79,0.79,0.39,0]}],"5":[{"ar":0.712,"v":[0.29,1.16,1.16,0.87,1.16,1.16,0.87,1.16,1.16,0,0.51,1.16,1.16,0.87,1.16,1.16,0.87,1.16,1.16,0,0.58,1.16,1.02,0,0,0,0,0,0,0,0.44,0.87,0.65,0,0,0,0,0,0,0,0.8,1.16,0.87,0,0.22,0.29,0.22,0.07,0,0,0.87,1.16,0.95,0.73,1.16,1.16,0.87,1.09,0.44,0,0.65,0.87,0.87,0.65,0.58,0.8,0.65,0.87,0.87,0.07,0.29,0.58,0.58,0.07,0,0,0.44,1.16,1.16,0.65,0,0,0,0,0,0,0,0.95,1.16,0.87,0.29,0.29,0.07,0,0,0,0,0.87,1.16,0.87,0.87,0.87,0.51,0,0,0,0.07,0.8,0.87,0.58,0.87,1.16,1.16,0.44,0.29,0.36,0.65,1.16,1.16,0.36,0.22,1.09,1.16,0.87,1.16,1.16,0.87,1.16,0.73,0,0,0.07,0.65,0.65,0.87,0.87,0.58,0.36,0,0]}],"6":[{"ar":0.755,"v":[0,0,0.13,0.66,0.99,1.06,0.92,0.53,0.07,0,0,0.2,0.99,1.06,1.06,1.06,1.06,1.06,0.86,0.07,0,0.92,1.06,0.99,0.53,0.26,0.73,1.06,1.06,0.59,0.33,1.06,1.06,0.4,0,0,0,0.66,0.79,0.66,0.46,0.79,0.79,0,0,0,0,0,0,0,0.79,1.06,0.79,0.2,0.79,1.06,1.06,0.86,0.26,0,0.79,1.06,0.86,0.99,1.06,0.86,1.06,1.06,1.06,0.26,0.92,1.06,1.06,0.73,0.07,0,0.2,0.99,1.06,0.86,0.79,1.06,1.06,0.07,0,0,0,0.59,1.06,1.06,0.53,0.79,0.79,0,0,0,0,0.4,0.79,0.79,0.46,1.06,1.06,0.26,0,0,0,0.79,1.06,0.99,0.07,0.99,1.06,0.92,0.33,0.26,0.59,1.06,1.06,0.53,0,0.33,0.99,1.06,1.06,1.06,1.06,1.06,0.86,0.07,0,0,0.13,0.66,0.79,0.79,0.79,0.4,0,0]}],"7":[{"ar":0.692,"v":[1.2,1.2,0.9,1.2,0.9,1.2,1.2,0.9,1.2,0.9,1.2,1.2,0.9,1.2,0.9,1.2,1.2,0.9,1.2,0.9,0,0,0,0,0,0,0.45,0.9,1.2,0.75,0,0,0,0,0,0,0.75,0.67,0.9,0.15,0,0,0,0,0,0.3,1.2,0.9,0.9,0,0,0,0,0,0,0.9,1.2,0.9,0.3,0,0,0,0,0,0.15,0.9,0.9,0.52,0,0,0,0,0,0,0.75,1.2,1.2,0.15,0,0,0,0,0,0.45,0.9,1.2,0.75,0,0,0,0,0,0,1.05,0.9,1.2,0.15,0,0,0,0,0,0.3,0.9,0.67,0.6,0,0,0,0,0,0.07,0.82,1.2,0.9,0.3,0,0,0,0,0,0.6,0.9,1.2,0.6,0,0,0,0,0,0,0.82,0.67,0.82,0.07,0,0,0,0,0]}],"8":[{"ar":0.755,"v":[0,0,0.4,0.79,1.06,1.06,0.86,0.53,0.07,0,0,0.66,1.06,1.06,1.06,1.06,1.06,1.06,0.86,0.07,0.2,1.06,1.06,0.86,0.07,0.07,0.66,1.06,1.06,0.46,0.4,1.06,1.06,0.26,0,0,0,1.06,1.06,0.53,0.2,0.79,0.79,0.2,0,0,0.07,0.79,0.79,0.4,0,0.86,1.06,0.86,0.33,0.26,0.79,1.06,0.99,0.07,0,0.07,0.66,1.06,1.06,1.06,1.06,0.86,0.13,0,0,0.59,1.06,1.06,0.86,0.86,1.06,1.06,0.79,0.07,0.53,1.06,1.06,0.4,0,0,0.2,0.99,1.06,0.79,0.59,0.79,0.73,0,0,0,0,0.59,0.79,0.79,0.86,1.06,0.99,0,0,0,0,0.79,1.06,1.06,0.66,1.06,1.06,0.66,0.07,0.07,0.46,1.06,1.06,0.79,0.07,0.86,1.06,1.06,1.06,1.06,1.06,1.06,0.99,0.2,0,0,0.4,0.73,0.79,0.79,0.79,0.46,0.07,0]}],"9":[{"ar":0.769,"v":[0,0.07,0.74,1.08,1.08,1.08,1.08,0.61,0.07,0,0.07,0.94,1.08,1.08,0.94,1.01,1.08,1.08,0.81,0,0.54,1.08,1.08,0.4,0,0,0.54,1.08,1.08,0.4,0.61,0.81,0.67,0,0,0,0,0.74,0.81,0.61,0.88,1.08,0.81,0,0,0,0,0.81,1.08,1.01,0.81,1.08,0.94,0,0,0,0.07,1.08,1.08,1.08,0.4,0.81,0.81,0.47,0,0.07,0.61,0.81,0.81,0.81,0.07,1.01,1.08,1.08,1.08,1.08,1.01,0.74,1.08,1.08,0,0.07,0.67,1.01,1.08,0.74,0.2,0.61,1.08,1.01,0,0,0,0,0,0,0,0.94,1.08,0.74,0.54,0.81,0.81,0.07,0,0,0.2,0.81,0.81,0.34,0.34,1.08,1.08,0.88,0.4,0.54,1.01,1.08,1.01,0.07,0,0.67,1.08,1.08,1.08,1.08,1.08,1.01,0.27,0,0,0,0.34,0.74,0.81,0.81,0.67,0.13,0,0]}]}};
 function renderEcl(){
   $("#title").textContent="Eclectic";
   updateEcl();
@@ -651,6 +738,9 @@ function renderEcl(){
     <label class="field"><span class="label">Cancha</span><input id="eC" value="${esc(e.course||"")}"></label>
     <div class="ecldates"><label class="field"><span class="label">Desde</span><input type="date" id="eF" value="${esc(e.from||"")}"></label><label class="field"><span class="label">Hasta</span><input type="date" id="eT" value="${esc(e.to||"")}"></label></div>
     <div class="eclrow">${col([0,1,2,3,4,5,6,7,8])}${col([9,10,11,12,13,14,15,16,17])}</div>
+    <button class="btn ghost wide" type="button" id="ocrBtn">Comparar con la captura del club</button>
+    <input type="file" id="ocrFile" accept="image/*" hidden>
+    <div id="ocrOut" class="ocrout" hidden></div>
     <div class="eclkey"><span><i class="bir"></i>Birdie</span><span><i></i>Par</span><span><i class="bog"></i>Bogey</span><span><i class="dbl"></i>Doble o más</span></div>
     <p class="hint">Cada ronda terminada en esta cancha dentro del período baja automáticamente los hoyos donde mejoraste. Si algo no coincide con el club, corregilo acá.</p>
     <button class="btn" type="submit">Guardar eclectic</button>
@@ -660,6 +750,27 @@ function renderEcl(){
     v.forEach((x,k)=>{const d=x&&pars[k]?x-pars[k]:null;$("#es"+k).className=d===null||d===0?"":d<0?"bir":d===1?"bog":"dbl"});
     $("#et0").textContent=a||"–";$("#et9").textContent=b||"–";$("#eG").textContent=g||"–";$("#eN").textContent=g&&!isNaN(h)?String(Math.round((g-h)*10)/10).replace(".",","):"–"};
   app.querySelectorAll("#eclF input").forEach(x=>x.oninput=sums);sums();
+  $("#ocrBtn").onclick=()=>$("#ocrFile").click();
+  $("#ocrFile").onchange=async ev=>{
+    const f=ev.target.files[0];ev.target.value="";if(!f)return;
+    const out=$("#ocrOut");out.hidden=false;out.innerHTML=`<p class="hint">Leyendo la captura…</p>`;
+    let res=null;
+    try{const bm=await createImageBitmap(f),c=document.createElement("canvas");c.width=bm.width;c.height=bm.height;const g=c.getContext("2d",{willReadFrequently:true});g.drawImage(bm,0,0);
+      res=ocrRead(g.getImageData(0,0,c.width,c.height),OCR_T,pars)}catch{}
+    if(!res){out.innerHTML=`<p><b>No pude leer esa captura.</b> Tiene que ser la pantalla del eclectic de golferscc.com, entera, como la sacás con el teléfono.</p>`;return}
+    app.querySelectorAll(".eclh input").forEach(x=>x.classList.remove("diff","unsure"));
+    const cur=vals(), diffs=[], unsure=[];
+    res.scores.forEach((v,k)=>{if(!res.sure[k]){unsure.push(k+1);$("#es"+k).classList.add("unsure")}else if(v!==cur[k]){diffs.push(k);$("#es"+k).classList.add("diff")}});
+    const hcpNow=$("#eH").value.trim().replace(",","."), hcpDiff=res.hcp&&res.hcp!==hcpNow;
+    let h="";
+    if(!diffs.length&&!hcpDiff)h=`<p><b>✓ Coincide con el club</b>: ${res.scores.reduce((a,b)=>a+b,0)} golpes${res.hcp?`, hcp ${res.hcp}`:""}.</p>`;
+    else{h=`<p><b>Hay diferencias con el club:</b></p><ul>${diffs.map(k=>`<li>Hoyo ${k+1}: club <b>${res.scores[k]}</b> · app ${cur[k]||"–"}</li>`).join("")}${hcpDiff?`<li>Hcp: club <b>${res.hcp}</b> · app ${esc(hcpNow)||"–"}</li>`:""}</ul>
+      <button class="btn wide" type="button" id="ocrUse">Usar los valores del club</button>`}
+    if(unsure.length)h+=`<p class="hint">No estoy seguro de ${unsure.length===1?"el hoyo":"los hoyos"} ${unsure.join(", ")}: miralos vos.</p>`;
+    out.innerHTML=h;
+    const u=$("#ocrUse");if(u)u.onclick=()=>{diffs.forEach(k=>{$("#es"+k).value=res.scores[k];$("#es"+k).classList.remove("diff")});if(hcpDiff)$("#eH").value=res.hcp;sums();
+      out.innerHTML=`<p><b>Listo, cargué los valores del club.</b> Tocá "Guardar eclectic" para que queden.</p>`};
+  };
   $("#eclF").onsubmit=ev=>{
     ev.preventDefault();
     const course=$("#eC").value.trim(),changed=!ecl||norm(course)!==norm(ecl.course)||$("#eF").value!==ecl.from||$("#eT").value!==ecl.to;
