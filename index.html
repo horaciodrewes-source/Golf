@@ -122,6 +122,12 @@ body.playing .wrap{padding-block:0 12px}
 .used li span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;display:flex;align-items:baseline;gap:3px}
 .used li span small{font:700 15px/1 var(--display)}
 .used li span b{font:700 22px/1 var(--display)}
+.used li{position:relative}
+.used li i.sd{position:absolute;right:28px;top:3px;font:700 13px/1 var(--body);font-style:normal;color:#ffe08a;text-transform:none}
+.used li i.sd.low{opacity:.55}
+.gpsnote{font-size:12px;color:var(--muted);margin:4px 0 0}
+.bagrow .gps{grid-column:1/-1;margin:-4px 0 4px 4px;font-size:13px;color:var(--muted)}
+.dists{display:flex;flex-direction:column;gap:4px;font-size:14px}.dists b{font-family:var(--display);font-size:16px}
 .used li button{color:var(--muted);font:600 20px/1 var(--body);width:28px;height:100%;flex:0 0 auto}
 .used li.none{background:transparent;border-style:dashed;border-color:var(--line);color:var(--muted);font:600 13px/1.2 var(--body);text-transform:none;padding:0 8px}
 .clubs{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;gap:5px}
@@ -477,6 +483,28 @@ function renderSetup(){
   };
 }
 
+/* ---------- GPS: al tocar un palo se guarda dónde estás; el golpe mide hasta el toque siguiente ---------- */
+const LSGPS="golf.gps.v1";
+let gpsOn=lsGet(LSGPS,true), gpsMsg="";
+function metersBetween(a,b){const R=6371000,t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t,x=Math.sin(dl/2)**2+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+/* distancia del golpe k del hoyo (hasta donde se tocó el golpe siguiente); low = GPS poco preciso */
+function shotDist(h,k){const a=h.pos&&h.pos[k],b=h.pos&&h.pos[k+1];if(!a||!b)return null;const m=Math.round(metersBetween(a,b));return {m,low:Math.max(a[2],b[2])>20}}
+function markPos(r,h,k,club){
+  if(!gpsOn||!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(p=>{
+    if(h.shots[k]!==club)return;
+    h.pos=h.pos||[];while(h.pos.length<h.shots.length)h.pos.push(null);
+    h.pos[k]=[+p.coords.latitude.toFixed(6),+p.coords.longitude.toFixed(6),Math.round(p.coords.accuracy)];
+    save(r);if(view.name==="play"&&rounds[view.id]===r)render();
+  },e=>{gpsMsg=e.code===1?"El GPS no tiene permiso: activalo en Configuración › Privacidad › Localización para medir los golpes.":"";if(gpsMsg&&view.name==="play")render()},{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+}
+/* distancia típica (mediana) de cada palo con todos los golpes medidos */
+function clubStats(){
+  const m={};
+  for(const r of Object.values(rounds))for(const h of r.holes)h.shots.forEach((c,k)=>{if(c===PUTTER||c===OTRO||c===PENAL)return;const d=shotDist(h,k);if(d&&!d.low&&d.m>=5&&d.m<=350)(m[c]=m[c]||[]).push(d.m)});
+  const out={};for(const c in m){const a=m[c].sort((x,y)=>x-y);out[c]={med:a[a.length>>1],n:a.length}}
+  return out;
+}
 function renderPlay(){
   const r=rounds[view.id]; if(!r)return go({name:"list"});
   const i=Math.min(view.hole||0,r.holes.length-1), h=r.holes[i], t=totals(r);
@@ -504,7 +532,7 @@ function renderPlay(){
       <div><b>${diffTxt(nine.diff,nine.pl)}</b><span>Desde el ${front?1:10}</span></div>
     </div>
     <div class="playgrid">
-      <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`<li class="${clubKind(c)}"><b>${k+1}</b><span>${clubLabel(shotName(c))}</span><button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>
+      <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`<li class="${clubKind(c)}"><b>${k+1}</b><span>${clubLabel(shotName(c))}</span>${(()=>{const d=c!==PUTTER&&shotDist(h,k);return d?`<i class="sd${d.low?" low":""}">${d.m}</i>`:""})()}<button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>${gpsMsg?`<p class="gpsnote">${gpsMsg}</p>`:""}
       <div class="clubs" aria-label="Palos">${B.map(clubBtn).join("")}
         <button class="other" data-c="${OTRO}"><b>Pen/Otro</b></button>
         <button class="putter" data-c="${PUTTER}"><b>Putter</b></button></div>
@@ -524,8 +552,8 @@ function renderPlay(){
   const nb=$("#nextBig"); if(nb)nb.onclick=()=>{fwd();window.scrollTo(0,0)};
   const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);updateEcl();go({name:"card",id:r.id})};
   app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);render()});
-  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{h.shots.push(b.dataset.c);save(r);render()});
-  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{h.shots.splice(+b.dataset.del,1);save(r);render()});
+  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;h.shots.push(c);if(h.pos)while(h.pos.length<h.shots.length)h.pos.push(null);save(r);render();markPos(r,h,h.shots.length-1,c)});
+  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const k=+b.dataset.del;h.shots.splice(k,1);if(h.pos)h.pos.splice(k,1);save(r);render()});
   $("#card").onclick=()=>go({name:"card",id:r.id,from:"play",hole:i});
 }
 
@@ -563,6 +591,7 @@ function renderCard(){
     </div>
     <div class="tablebox"><table><thead><tr><th>Hoyo</th><th>Par</th><th>Golpes</th><th>Putts</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="legend"><span><span class="mark eagle">2</span> Eagle</span><span><span class="mark birdie">3</span> Birdie</span><span><span class="mark bogey">5</span> Bogey</span><span><span class="mark dbl">6</span> Doble o más</span>${better.size?`<span><span class="eclb"></span>Mejora tu eclectic</span>`:""}</div>
+    ${(()=>{const m={};r.holes.forEach(h=>h.shots.forEach((c,k)=>{if(c===PUTTER)return;const d=shotDist(h,k);if(d)(m[c]=m[c]||[]).push(d.low?"~"+d.m:d.m)}));const ks=order.filter(c=>m[c]);return ks.length?`<h2>Distancias GPS</h2><div class="dists">${ks.map(c=>`<div><b>${esc(shotName(c))}</b> · ${m[c].join(" · ")} m</div>`).join("")}</div>`:""})()}
     ${order.length?`<h2>Palos usados</h2><div class="usage">${order.map(c=>`<div><span>${esc(shotName(c))}</span><i style="width:${Math.round(use[c]/max*100)}%"></i><b>${use[c]}</b></div>`).join("")}</div>`:""}
     ${shared?`<p class="hint">Ronda compartida por link. No queda guardada en este teléfono.</p><button class="btn wide" id="mine">Ir a mis rondas</button></section>`:`
     <div class="bar"><button class="btn" id="play">${r.done?"Corregir golpes":"Seguir jugando"}</button><button class="btn ghost" id="edit">Editar datos</button></div>
@@ -628,10 +657,13 @@ async function importRounds(f){
 }
 function renderBag(){
   $("#title").textContent="Palos";
+  const st=clubStats();
   app.innerHTML=`<section><form id="bagF" class="admin">
     <div class="bagrow"><span class="label">Palo</span><span class="label">Distancia</span></div>
-    ${bag.map((b,k)=>`<div class="bagrow"><input id="bn${k}" value="${esc(b.name)}" aria-label="Palo ${k+1}"><div class="m"><input id="bd${k}" value="${esc(b.dist)}" inputmode="numeric" maxlength="3" aria-label="Distancia del palo ${k+1} en metros"><span>m</span></div></div>`).join("")}
-    <p class="hint">Putter y Pen/Otro quedan siempre. La distancia aparece chiquita a la izquierda de cada botón.</p>
+    ${bag.map((b,k)=>`<div class="bagrow"><input id="bn${k}" value="${esc(b.name)}" aria-label="Palo ${k+1}"><div class="m"><input id="bd${k}" value="${esc(b.dist)}" inputmode="numeric" maxlength="3" aria-label="Distancia del palo ${k+1} en metros"><span>m</span></div>${st[b.name]?`<span class="gps">GPS: ${st[b.name].med} m típico (${st[b.name].n} golpe${st[b.name].n>1?"s":""})</span>`:""}</div>`).join("")}
+    ${Object.keys(st).length?`<button class="btn ghost" type="button" id="useGps">Usar las distancias del GPS</button>`:""}
+    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="gpsOn" ${gpsOn?"checked":""} style="width:24px;min-height:24px"><span>Medir cada golpe con el GPS</span></label>
+    <p class="hint">Putter y Pen/Otro quedan siempre. La distancia aparece chiquita a la izquierda de cada botón. Con el GPS, cada golpe se mide desde donde tocaste el palo hasta donde tocás el siguiente: tocalo parado al lado de la pelota.</p>
     <button class="btn" type="submit">Guardar palos</button>
     <button class="btn ghost" type="button" id="bagReset">Volver a los palos originales</button>
   </form></section>`;
@@ -641,6 +673,8 @@ function renderBag(){
     lsSet(LSBAG,bag);go({name:"admin"});
   };
   $("#bagReset").onclick=()=>{bag=DEFAULT_BAG.map(x=>({...x}));lsSet(LSBAG,bag);render()};
+  $("#gpsOn").onchange=e=>{gpsOn=e.target.checked;lsSet(LSGPS,gpsOn)};
+  const ug=$("#useGps");if(ug)ug.onclick=()=>bag.forEach((b,k)=>{if(st[b.name])$("#bd"+k).value=st[b.name].med});
 }
 /* ---------- lectura de la captura del eclectic del club ---------- */
 /* La captura de golferscc.com tiene siempre el mismo diseño: busca los 18 casilleros por color
