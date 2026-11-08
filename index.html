@@ -200,6 +200,8 @@ td.eclb{background:#e0345a;color:#fff}td.eclb .mark{border-color:#fff;box-shadow
 .usage b{text-align:right;font-variant-numeric:tabular-nums}
 .confirm{background:var(--surface);border:1.5px solid var(--danger);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .confirm p{margin:0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:40}
+.modal .confirm{width:100%;max-width:380px;border-color:var(--flag);font-size:17px}
 h2{font:700 20px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;margin:8px 0 0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.clubs button:active{transform:none}}
 html{color-scheme:dark;-webkit-text-size-adjust:100%}
@@ -260,6 +262,17 @@ let ecl=(()=>{try{const e=JSON.parse(localStorage.getItem(LSECL));if(e&&Array.is
 function saveEcl(){try{localStorage.setItem(LSECL,JSON.stringify(ecl))}catch{}}
 function eclFor(r){return ecl&&ecl.course&&r&&norm(r.course)===norm(ecl.course)?ecl:null}
 /* suma al eclectic las rondas terminadas (o de días anteriores) de esa cancha dentro del período; cada ronda una sola vez, así una corrección a mano no se pisa */
+/* saca del eclectic lo que puso una ronda (si nadie lo cambió después), para volver a contarla con sus golpes nuevos */
+function unapplyEcl(r){
+  if(!ecl||!ecl.applied||!ecl.applied.includes(r.id))return;
+  const u=ecl.undo&&ecl.undo[r.id];
+  if(u)for(const k in u){const [prev,set]=u[k];if(ecl.scores[k]===set)ecl.scores[k]=prev}
+  ecl.applied=ecl.applied.filter(x=>x!==r.id);
+  if(ecl.imp)delete ecl.imp[r.id];if(ecl.undo)delete ecl.undo[r.id];
+  saveEcl();
+}
+/* después de cambiar golpes de una ronda ya contada, la vuelve a contar */
+function recountEcl(r){if(ecl&&ecl.applied&&ecl.applied.includes(r.id)){unapplyEcl(r);updateEcl()}}
 function updateEcl(){
   if(!ecl||!ecl.course)return false;
   ecl.applied=ecl.applied||[];let ch=false;
@@ -267,9 +280,13 @@ function updateEcl(){
     if(ecl.applied.includes(r.id)||norm(r.course)!==norm(ecl.course))continue;
     if(!(r.done||(r.date&&r.date<today())))continue;
     if((ecl.from&&r.date<ecl.from)||(ecl.to&&r.date>ecl.to))continue;
-    const imp=[];
-    for(const h of r.holes){if(!h.shots.length)continue;const k=h.n-1,v=h.shots.length;if(!ecl.scores[k]||v<ecl.scores[k]){if(ecl.scores[k])imp.push(h.n);ecl.scores[k]=v;ecl.pars&&(ecl.pars[k]=h.par)}}
-    ecl.applied.push(r.id);(ecl.imp=ecl.imp||{})[r.id]=imp;ch=true;
+    const imp=[],undo={};
+    for(const h of r.holes){
+      if(!h.shots.length)continue;
+      if(h.shots.length===1&&h.par>=4)continue; /* un solo golpe en par 4 o 5: hoyo sin terminar, no cuenta */
+      const k=h.n-1,v=h.shots.length;
+      if(!ecl.scores[k]||v<ecl.scores[k]){if(ecl.scores[k])imp.push(h.n);undo[k]=[ecl.scores[k]||0,v];ecl.scores[k]=v;ecl.pars&&(ecl.pars[k]=h.par)}}
+    ecl.applied.push(r.id);(ecl.imp=ecl.imp||{})[r.id]=imp;(ecl.undo=ecl.undo||{})[r.id]=undo;ch=true;
   }
   if(ch)saveEcl();return ch;
 }
@@ -421,7 +438,7 @@ function renderList(){
   app.querySelectorAll("[data-yes]").forEach(b=>b.onclick=()=>{removeRound(b.dataset.yes);listMode.confirm=null;render()});
   app.querySelectorAll(".round").forEach(b=>b.onclick=()=>{const r=rounds[b.dataset.id];go(r.done?{name:"card",id:r.id}:{name:"play",id:r.id,hole:firstOpenHole(r)})});
 }
-function removeRound(id){delete rounds[id];lsSet(LS,rounds);dirty.delete(id);deleted.push(id);lsSet(LSDEL,deleted);flush()}
+function removeRound(id){if(rounds[id])unapplyEcl(rounds[id]);delete rounds[id];lsSet(LS,rounds);dirty.delete(id);deleted.push(id);lsSet(LSDEL,deleted);flush()}
 function firstOpenHole(r){const i=r.holes.findIndex(h=>!h.shots.length);return i<0?r.holes.length-1:Math.max(0,i)}
 
 function renderSetup(){
@@ -505,6 +522,16 @@ function clubStats(){
   const out={};for(const c in m){const a=m[c].sort((x,y)=>x-y);out[c]={med:a[a.length>>1],n:a.length}}
   return out;
 }
+/* pide confirmación antes de terminar: así un toque sin querer no cuenta la ronda para el eclectic */
+function confirmFinish(r,after){
+  const left=r.holes.filter(h=>!h.shots.length).length;
+  const d=document.createElement("div");d.className="modal";
+  d.innerHTML=`<div class="confirm" role="dialog" aria-modal="true"><p><b>¿Terminar la ronda?</b></p><p>${left?`Quedan <b>${left}</b> hoyo${left>1?"s":""} sin golpes. `:""}Al terminarla se cuenta para el eclectic.</p><div class="bar"><button class="btn finish" id="fYes">Sí, terminar</button><button class="btn ghost" id="fNo">Seguir jugando</button></div></div>`;
+  document.body.appendChild(d);
+  d.querySelector("#fNo").onclick=()=>d.remove();
+  d.onclick=e=>{if(e.target===d)d.remove()};
+  d.querySelector("#fYes").onclick=()=>{d.remove();r.done=true;save(r);updateEcl();after()};
+}
 function renderPlay(){
   const r=rounds[view.id]; if(!r)return go({name:"list"});
   const i=Math.min(view.hole||0,r.holes.length-1), h=r.holes[i], t=totals(r);
@@ -550,10 +577,10 @@ function renderPlay(){
   const fwd=()=>{const good=h.shots.length&&h.shots.length<=h.par;goHole(i+1);if(good)fireworks(h.shots.length<h.par?6:3)};
   $("#next").onclick=fwd;
   const nb=$("#nextBig"); if(nb)nb.onclick=()=>{fwd();window.scrollTo(0,0)};
-  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);updateEcl();go({name:"card",id:r.id})};
-  app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);render()});
-  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;h.shots.push(c);if(h.pos)while(h.pos.length<h.shots.length)h.pos.push(null);save(r);render();markPos(r,h,h.shots.length-1,c)});
-  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const k=+b.dataset.del;h.shots.splice(k,1);if(h.pos)h.pos.splice(k,1);save(r);render()});
+  const fb=$("#finish"); if(fb)fb.onclick=()=>confirmFinish(r,()=>go({name:"card",id:r.id}));
+  app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);recountEcl(r);render()});
+  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;h.shots.push(c);if(h.pos)while(h.pos.length<h.shots.length)h.pos.push(null);save(r);recountEcl(r);render();markPos(r,h,h.shots.length-1,c)});
+  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const k=+b.dataset.del;h.shots.splice(k,1);if(h.pos)h.pos.splice(k,1);save(r);recountEcl(r);render()});
   $("#card").onclick=()=>go({name:"card",id:r.id,from:"play",hole:i});
 }
 
@@ -604,7 +631,7 @@ function renderCard(){
   $("#play").onclick=()=>go({name:"play",id:r.id,hole:r.done?0:firstOpenHole(r)});
   $("#edit").onclick=()=>go({name:"setup",id:r.id});
   $("#sendOne").onclick=()=>sendRound(r);
-  const fb=$("#finish"); if(fb)fb.onclick=()=>{r.done=true;save(r);render()};
+  const fb=$("#finish"); if(fb)fb.onclick=()=>confirmFinish(r,()=>render());
   $("#del").onclick=()=>{
     $("#delBox").innerHTML=`<div class="confirm"><p>¿Borrar esta ronda? No se puede recuperar.</p><div class="bar"><button class="btn danger" id="yes">Sí, borrar</button><button class="btn ghost" id="no">Cancelar</button></div></div>`;
     $("#no").onclick=()=>render();
