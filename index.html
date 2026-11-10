@@ -229,7 +229,7 @@ const PUTTER="Putter", OTRO="Otro", PENAL="Penal";
 const LSBAG="golf.bag.v1";
 let bag=(()=>{try{const b=JSON.parse(localStorage.getItem(LSBAG));if(Array.isArray(b)&&b.length===13&&b.every(x=>x&&x.name))return b}catch{}return DEFAULT_BAG.map(x=>({...x}))})();
 function clubs(){return bag.map(b=>b.name)}
-function shotName(c){return c===OTRO?"Pen/Otro":c}
+function shotName(c){return c===OTRO?"PENAL":c}
 /* "Hierro 7" -> palabra chica + número grande */
 function clubKind(c){return /^(Drive|Driver|Madera|H[ií]brido)/i.test(c)?"wood":/^Hierro/i.test(c)?"iron":/^(P|A|S|G|L|PW|AW|SW|GW|LW|Wedge.*|\d+)$/i.test(c)?"wedge":c===PUTTER?"":"other"}
 function clubLabel(c){const m=/^(.*\D)\s(\d+)$/.exec(c);return `<span class="lb">${m?`<small>${esc(m[1])}</small><b>${m[2]}</b>`:`<b>${esc(c)}</b>`}</span>`}
@@ -578,7 +578,7 @@ function renderPlay(){
     <div class="playgrid">
       <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`${(()=>{const d=c!==PUTTER&&shotDist(h,k);return `<li class="${clubKind(c)}${d?" hasd":""}"><b>${k+1}</b><span>${clubLabel(shotName(c))}</span>${d?`<i class="sd${d.low?" low":""}" title="precisión ±${d.acc} m">${d.low?"~":""}${d.m}<small>m</small></i>`:""}`})()}<button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>${gpsMsg?`<p class="gpsnote">${gpsMsg}</p>`:""}
       <div class="clubs" aria-label="Palos">${B.map(clubBtn).join("")}
-        <button class="other" data-c="${OTRO}"><b>Pen/Otro</b></button>
+        <button class="other" data-c="${OTRO}"><b>PENAL</b></button>
         <button class="putter" data-c="${PUTTER}"><b>Putter</b></button></div>
     </div>
     <div class="bar">
@@ -707,7 +707,7 @@ function renderBag(){
     ${bag.map((b,k)=>`<div class="bagrow"><input id="bn${k}" value="${esc(b.name)}" aria-label="Palo ${k+1}"><div class="m"><input id="bd${k}" value="${esc(b.dist)}" inputmode="numeric" maxlength="3" aria-label="Distancia del palo ${k+1} en metros"><span>m</span></div>${st[b.name]?`<span class="gps">GPS: ${st[b.name].med} m típico (${st[b.name].n} golpe${st[b.name].n>1?"s":""})</span>`:""}</div>`).join("")}
     ${Object.keys(st).length?`<button class="btn ghost" type="button" id="useGps">Usar las distancias del GPS</button>`:""}
     <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" id="gpsOn" ${gpsOn?"checked":""} style="width:24px;min-height:24px"><span>Medir cada golpe con el GPS</span></label>
-    <p class="hint">Putter y Pen/Otro quedan siempre. La distancia aparece chiquita a la izquierda de cada botón. Con el GPS, cada golpe se mide desde donde tocaste el palo hasta donde tocás el siguiente: tocalo parado al lado de la pelota.</p>
+    <p class="hint">Putter y PENAL quedan siempre. La distancia aparece chiquita a la izquierda de cada botón. Con el GPS, cada golpe se mide desde donde tocaste el palo hasta donde tocás el siguiente: tocalo parado al lado de la pelota.</p>
     <button class="btn" type="submit">Guardar palos</button>
     <button class="btn ghost" type="button" id="bagReset">Volver a los palos originales</button>
   </form></section>`;
