@@ -123,8 +123,11 @@ body.playing .wrap{padding-block:0 12px}
 .used li span small{font:700 15px/1 var(--display)}
 .used li span b{font:700 22px/1 var(--display)}
 .used li{position:relative}
-.used li i.sd{position:absolute;right:28px;top:3px;font:700 13px/1 var(--body);font-style:normal;color:#ffe08a;text-transform:none}
-.used li i.sd.low{opacity:.55}
+.used li i.sd{font:700 22px/1 var(--display);font-style:normal;color:#ffe08a;text-transform:none;flex:0 0 auto;white-space:nowrap}
+.used li i.sd small{font-size:12px;margin-left:1px}
+.used li i.sd.low{color:#e0a060;opacity:.8}
+.used li.hasd>span small{font-size:11px}.used li.hasd>span b{font-size:15px}
+.used li.hasd{gap:3px}.used li.hasd button{width:22px}
 .gpsnote{font-size:12px;color:var(--muted);margin:4px 0 0}
 .bagrow .gps{grid-column:1/-1;margin:-4px 0 4px 4px;font-size:13px;color:var(--muted)}
 .dists{display:flex;flex-direction:column;gap:4px;font-size:14px}.dists b{font-family:var(--display);font-size:16px}
@@ -505,15 +508,29 @@ const LSGPS="golf.gps.v1";
 let gpsOn=lsGet(LSGPS,true), gpsMsg="";
 function metersBetween(a,b){const R=6371000,t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t,x=Math.sin(dl/2)**2+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 /* distancia del golpe k del hoyo (hasta donde se tocó el golpe siguiente); low = GPS poco preciso */
-function shotDist(h,k){const a=h.pos&&h.pos[k],b=h.pos&&h.pos[k+1];if(!a||!b)return null;const m=Math.round(metersBetween(a,b));return {m,low:Math.max(a[2],b[2])>20}}
+function shotDist(h,k){const a=h.pos&&h.pos[k],b=h.pos&&h.pos[k+1];if(!a||!b)return null;const m=Math.round(metersBetween(a,b));return {m,low:Math.max(a[2],b[2])>15,acc:Math.max(a[2],b[2])}}
+/* El primer dato del GPS después de estar apagado suele venir de antenas o wifi (errores de 30 a 100 m o más).
+   Por eso escucha hasta 12 segundos y se queda con el dato más preciso; corta antes si baja de 6 m. */
 function markPos(r,h,k,club){
   if(!gpsOn||!navigator.geolocation)return;
-  navigator.geolocation.getCurrentPosition(p=>{
-    if(h.shots[k]!==club)return;
+  let best=null,id=null,t0=Date.now();
+  const store=()=>{
+    if(id!==null)navigator.geolocation.clearWatch(id);id=null;
+    if(!best||h.shots[k]!==club)return;
+    const c=best.coords;
+    gpsMsg=c.accuracy>500?"El iPhone está dando la ubicación aproximada: activá «Ubicación exacta» en Configuración › Privacidad › Localización › Sitios web de Safari.":"";
     h.pos=h.pos||[];while(h.pos.length<h.shots.length)h.pos.push(null);
-    h.pos[k]=[+p.coords.latitude.toFixed(6),+p.coords.longitude.toFixed(6),Math.round(p.coords.accuracy)];
+    h.pos[k]=[+c.latitude.toFixed(6),+c.longitude.toFixed(6),Math.round(c.accuracy)];
     save(r);if(view.name==="play"&&rounds[view.id]===r)render();
-  },e=>{gpsMsg=e.code===1?"El GPS no tiene permiso: activalo en Configuración › Privacidad › Localización para medir los golpes.":"";if(gpsMsg&&view.name==="play")render()},{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  };
+  const timer=setTimeout(store,12000);
+  id=navigator.geolocation.watchPosition(p=>{
+    if(p.timestamp&&p.timestamp<t0-1000)return;
+    if(!best||p.coords.accuracy<best.coords.accuracy)best=p;
+    if(best.coords.accuracy<=6){clearTimeout(timer);store()}
+  },e=>{clearTimeout(timer);if(id!==null)navigator.geolocation.clearWatch(id);id=null;
+    gpsMsg=e.code===1?"El GPS no tiene permiso: activalo en Configuración › Privacidad › Localización para medir los golpes.":"";if(gpsMsg&&view.name==="play")render()},
+  {enableHighAccuracy:true,maximumAge:0,timeout:15000});
 }
 /* distancia típica (mediana) de cada palo con todos los golpes medidos */
 function clubStats(){
@@ -559,7 +576,7 @@ function renderPlay(){
       <div><b>${diffTxt(nine.diff,nine.pl)}</b><span>Desde el ${front?1:10}</span></div>
     </div>
     <div class="playgrid">
-      <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`<li class="${clubKind(c)}"><b>${k+1}</b><span>${clubLabel(shotName(c))}</span>${(()=>{const d=c!==PUTTER&&shotDist(h,k);return d?`<i class="sd${d.low?" low":""}">${d.m}</i>`:""})()}<button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>${gpsMsg?`<p class="gpsnote">${gpsMsg}</p>`:""}
+      <ol class="used" aria-label="Golpes del hoyo">${h.shots.map((c,k)=>`${(()=>{const d=c!==PUTTER&&shotDist(h,k);return `<li class="${clubKind(c)}${d?" hasd":""}"><b>${k+1}</b><span>${clubLabel(shotName(c))}</span>${d?`<i class="sd${d.low?" low":""}" title="precisión ±${d.acc} m">${d.low?"~":""}${d.m}<small>m</small></i>`:""}`})()}<button data-del="${k}" aria-label="Borrar golpe ${k+1}">×</button></li>`).join("")||`<li class="none">Sin golpes</li>`}</ol>${gpsMsg?`<p class="gpsnote">${gpsMsg}</p>`:""}
       <div class="clubs" aria-label="Palos">${B.map(clubBtn).join("")}
         <button class="other" data-c="${OTRO}"><b>Pen/Otro</b></button>
         <button class="putter" data-c="${PUTTER}"><b>Putter</b></button></div>
