@@ -34,6 +34,12 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 header.top h1{font:700 26px/1 var(--display);letter-spacing:.02em;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
 .sync{font-size:12px;color:var(--muted);white-space:nowrap}
 body.playing .sync{font:700 18px/1 var(--display);color:var(--ink);letter-spacing:.02em}
+body.playing header.top h1{font-size:17px;flex:0 1 auto;opacity:.8}
+body.playing header.top{gap:8px}
+.live{flex:0 0 auto;display:flex;align-items:baseline;gap:2px;border:1.5px solid #ffe08a;border-radius:9px;padding:3px 7px;color:#ffe08a;margin-right:auto}
+.live b{font:700 30px/1 var(--display);font-variant-numeric:tabular-nums;min-width:2ch;text-align:right}
+.live small{font:700 12px/1 var(--body)}
+.live.low{border-color:#e0a060;color:#e0a060}.live.low b{opacity:.8}
 body.playing .sync i{font-style:normal;color:#b9a6ec;margin-right:8px}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--flag);outline-offset:2px}
@@ -218,6 +224,7 @@ body{margin:0}
   <header class="top">
     <button class="icon-btn" id="back" aria-label="Volver" hidden>‹</button>
     <h1 id="title">Mis rondas</h1>
+    <span class="live" id="live" hidden aria-label="Yardas desde el último golpe"><b id="liveN">–</b><small>yd</small></span>
     <span class="sync" id="sync">Guardado en este teléfono</span>
   </header>
   <main id="app"></main>
@@ -396,6 +403,7 @@ function render(){
   document.body.classList.toggle("playing",view.name==="play");
   document.body.classList.toggle("light",view.name==="ecl");
   ({list:renderList,setup:renderSetup,play:renderPlay,card:renderCard,admin:renderAdmin,bag:renderBag,send:renderSend,ecl:renderEcl,shared:renderCard})[view.name]();
+  liveSync();
 }
 
 let listMode={archived:false,edit:false,confirm:null};
@@ -532,6 +540,27 @@ function markPos(r,h,k,club){
     gpsMsg=e.code===1?"El GPS no tiene permiso: activalo en Configuración › Privacidad › Localización para medir los golpes.":"";if(gpsMsg&&view.name==="play")render()},
   {enableHighAccuracy:true,maximumAge:0,timeout:15000});
 }
+/* contador en vivo: yardas desde donde se tocó el último palo hasta donde estás ahora (como el reloj Garmin) */
+let liveId=null, liveFix=null;
+function liveRef(){
+  if(view.name!=="play")return null;const r=rounds[view.id];if(!r)return null;
+  const h=r.holes[Math.min(view.hole||0,r.holes.length-1)];if(!h||!h.shots.length)return null;
+  const k=h.shots.length-1;return (h.pos&&h.pos[k])||(h.tapFix&&h.tapFix.k===k&&h.tapFix.p)||null;
+}
+function livePaint(){
+  const el=$("#live");if(!el)return;el.hidden=!(view.name==="play"&&gpsOn);if(el.hidden)return;
+  const a=liveRef(),n=$("#liveN");
+  if(!a||!liveFix){n.textContent=a?"…":"–";el.classList.remove("low");return}
+  const yd=Math.round(metersBetween(a,liveFix)*1.09361),low=Math.max(a[2],liveFix[2])>15;
+  n.textContent=(low?"~":"")+yd;el.classList.toggle("low",low);
+}
+function liveSync(){
+  const want=view.name==="play"&&gpsOn&&!!navigator.geolocation;
+  if(want&&liveId===null)liveId=navigator.geolocation.watchPosition(p=>{const c=p.coords;liveFix=[c.latitude,c.longitude,Math.round(c.accuracy)];livePaint()},()=>{},{enableHighAccuracy:true,maximumAge:0});
+  if(!want&&liveId!==null){navigator.geolocation.clearWatch(liveId);liveId=null;liveFix=null}
+  livePaint();
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&liveId!==null){navigator.geolocation.clearWatch(liveId);liveId=null}else liveSync()});
 /* distancia típica (mediana) de cada palo con todos los golpes medidos */
 function clubStats(){
   const m={};
@@ -596,7 +625,7 @@ function renderPlay(){
   const nb=$("#nextBig"); if(nb)nb.onclick=()=>{fwd();window.scrollTo(0,0)};
   const fb=$("#finish"); if(fb)fb.onclick=()=>confirmFinish(r,()=>go({name:"card",id:r.id}));
   app.querySelectorAll(".pars button").forEach(b=>b.onclick=()=>{h.par=+b.dataset.p;save(r);recountEcl(r);render()});
-  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;h.shots.push(c);if(h.pos)while(h.pos.length<h.shots.length)h.pos.push(null);save(r);recountEcl(r);render();markPos(r,h,h.shots.length-1,c)});
+  app.querySelectorAll(".clubs button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;h.shots.push(c);if(liveFix&&liveFix[2]<=30)h.tapFix={k:h.shots.length-1,p:liveFix.slice()};if(h.pos)while(h.pos.length<h.shots.length)h.pos.push(null);save(r);recountEcl(r);render();markPos(r,h,h.shots.length-1,c)});
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const k=+b.dataset.del;h.shots.splice(k,1);if(h.pos)h.pos.splice(k,1);save(r);recountEcl(r);render()});
   $("#card").onclick=()=>go({name:"card",id:r.id,from:"play",hole:i});
 }
