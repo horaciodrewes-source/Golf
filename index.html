@@ -521,9 +521,9 @@ function shotDist(h,k){const a=h.pos&&h.pos[k],b=h.pos&&h.pos[k+1];if(!a||!b)ret
    Por eso escucha hasta 12 segundos y se queda con el dato más preciso; corta antes si baja de 6 m. */
 function markPos(r,h,k,club){
   if(!gpsOn||!navigator.geolocation)return;
-  let best=null,id=null,t0=Date.now();
+  let best=null,id=null,t0=Date.now(),sub=null,done=false;
   const store=()=>{
-    if(id!==null)navigator.geolocation.clearWatch(id);id=null;
+    if(id!==null)navigator.geolocation.clearWatch(id);id=null;liveSubs.delete(sub);if(done)return;done=true;
     if(!best||h.shots[k]!==club)return;
     const c=best.coords;
     gpsMsg=c.accuracy>500?"El iPhone está dando la ubicación aproximada: activá «Ubicación exacta» en Configuración › Privacidad › Localización › Sitios web de Safari.":"";
@@ -532,16 +532,22 @@ function markPos(r,h,k,club){
     save(r);if(view.name==="play"&&rounds[view.id]===r)render();
   };
   const timer=setTimeout(store,12000);
-  id=navigator.geolocation.watchPosition(p=>{
+  const onPos=p=>{
     if(p.timestamp&&p.timestamp<t0-1000)return;
     if(!best||p.coords.accuracy<best.coords.accuracy)best=p;
     if(best.coords.accuracy<=6){clearTimeout(timer);store()}
-  },e=>{clearTimeout(timer);if(id!==null)navigator.geolocation.clearWatch(id);id=null;
+  };
+  /* si el contador en vivo ya está escuchando el GPS, usa esos mismos datos (un solo GPS encendido) */
+  if(liveId!==null){
+    /* sin datos nuevos = no te moviste, así que el último dato del contador es donde estás; después de 4 s ya podés estar caminando */
+    if(liveLast){best=liveLast;if(best.coords.accuracy<=6){clearTimeout(timer);store();return}}
+    sub=p=>{if(Date.now()-t0<4000)onPos(p)};liveSubs.add(sub);setTimeout(()=>{clearTimeout(timer);store()},4000);return}
+  id=navigator.geolocation.watchPosition(onPos,e=>{clearTimeout(timer);if(id!==null)navigator.geolocation.clearWatch(id);id=null;
     gpsMsg=e.code===1?"El GPS no tiene permiso: activalo en Configuración › Privacidad › Localización para medir los golpes.":"";if(gpsMsg&&view.name==="play")render()},
   {enableHighAccuracy:true,maximumAge:0,timeout:15000});
 }
 /* contador en vivo: yardas desde donde se tocó el último palo hasta donde estás ahora (como el reloj Garmin) */
-let liveId=null, liveFix=null;
+let liveId=null, liveFix=null, liveLast=null; const liveSubs=new Set();
 function liveRef(){
   if(view.name!=="play")return null;const r=rounds[view.id];if(!r)return null;
   const h=r.holes[Math.min(view.hole||0,r.holes.length-1)];if(!h||!h.shots.length)return null;
@@ -556,7 +562,7 @@ function livePaint(){
 }
 function liveSync(){
   const want=view.name==="play"&&gpsOn&&!!navigator.geolocation;
-  if(want&&liveId===null)liveId=navigator.geolocation.watchPosition(p=>{const c=p.coords;liveFix=[c.latitude,c.longitude,Math.round(c.accuracy)];livePaint()},()=>{},{enableHighAccuracy:true,maximumAge:0});
+  if(want&&liveId===null)liveId=navigator.geolocation.watchPosition(p=>{const c=p.coords;liveLast={timestamp:p.timestamp||Date.now(),coords:{latitude:c.latitude,longitude:c.longitude,accuracy:c.accuracy}};liveFix=[c.latitude,c.longitude,Math.round(c.accuracy)];livePaint();[...liveSubs].forEach(f=>f(liveLast))},()=>{},{enableHighAccuracy:true,maximumAge:0});
   if(!want&&liveId!==null){navigator.geolocation.clearWatch(liveId);liveId=null;liveFix=null}
   livePaint();
 }
